@@ -9,7 +9,7 @@ import { evaluations, evaluationColumns } from "./evaluations";
 import { purchasesByVendor, purchasesByItem, purchasesByPeriod, pendingPurchasingApprovals } from "./reports";
 import { reportFilter } from "@/modules/finance/reports/helpers";
 
-const make = (permission: string, columns: (tf: (k: string) => string, t: (k: string) => string) => ColumnDef[], load: Exporter["load"], ar: string, en: string): Exporter => ({
+const make = (permission: Exporter["permission"], columns: (tf: (k: string) => string, t: (k: string) => string) => ColumnDef[], load: Exporter["load"], ar: string, en: string): Exporter => ({
   permission,
   columns: async (locale) => {
     const [tf, t] = await Promise.all([getTranslations({ locale, namespace: "fields" }), getTranslations({ locale, namespace: "purchasing" })]);
@@ -20,7 +20,7 @@ const make = (permission: string, columns: (tf: (k: string) => string, t: (k: st
 });
 const f = (p: Parameters<Exporter["load"]>[1]) => ({ ...reportFilter(p), vendorId: p.filters.vendorId || null });
 
-export const requests = make("purchasing.request:view", requestColumns, (s, p) => allRequests(s, p), "طلبات الشراء", "Purchase requests");
+export const requests = make(["purchasing.request:view", "purchasing.myRequest:view"], requestColumns, (s, p) => allRequests(s, p), "طلبات الشراء", "Purchase requests");
 export const rfqs = make("purchasing.rfq:view", rfqColumns, (s, p) => allRfqs(s, p), "طلبات عروض الأسعار", "RFQs");
 export const purchaseOrders = make("purchasing.order:view", poColumns, (s, p) => allPurchaseOrders(s, p), "أوامر الشراء", "Purchase orders");
 export const vendorContracts = make("purchasing.contract:view", contractColumns, async (s, p) => withDaysLeft(await contracts.all(s, p) as { endDate: Date }[]), "عقود الموردين", "Vendor contracts");

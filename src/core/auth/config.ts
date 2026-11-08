@@ -3,6 +3,8 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { clientIp } from "./client-ip";
+import { isRateLimited, recordAttempt } from "./rate-limit";
 
 declare module "next-auth" {
   interface Session {
@@ -17,6 +19,7 @@ declare module "next-auth" {
       portal?: boolean;
       customerId?: string;
       companyId?: string;
+      tokenIssuedAt?: number;
     } & DefaultSession["user"];
   }
 }
@@ -28,6 +31,16 @@ const credentialsSchema = z.object({
 
 const MAX_FAILED = 5;
 const LOCK_MINUTES = 15;
+const IP_ATTEMPTS = 30;
+const IP_WINDOW_SECONDS = 15 * 60;
+
+const ipKey = (request: Request) => `login:${clientIp(request.headers) ?? "unknown"}`;
+
+let dummyHash: Promise<string> | undefined;
+/** Spends the same time as a real check, so response timing doesn't reveal which emails exist. */
+async function burnPasswordCheck(password: string) {
+  await bcrypt.compare(password, await (dummyHash ??= bcrypt.hash("no-such-account", 10)));
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt", maxAge: 12 * 60 * 60 },
@@ -38,30 +51,55 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       id: "portal",
       name: "Customer portal",
       credentials: { email: {}, password: {} },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
+        const ip = ipKey(request);
+        if (await isRateLimited(ip, IP_ATTEMPTS, IP_WINDOW_SECONDS)) return null;
         const u = await prisma.portalUser.findFirst({ where: { email: parsed.data.email.toLowerCase(), isActive: true }, include: { customer: { select: { nameAr: true, nameEn: true, isActive: true } } } });
-        if (!u || !u.customer.isActive) return null;
-        if (!(await bcrypt.compare(parsed.data.password, u.passwordHash))) return null;
-        await prisma.portalUser.update({ where: { id: u.id }, data: { lastLoginAt: new Date() } });
+        if (!u || !u.customer.isActive) {
+          await burnPasswordCheck(parsed.data.password);
+          await recordAttempt(ip, IP_WINDOW_SECONDS);
+          return null;
+        }
+        if (u.lockedUntil && u.lockedUntil > new Date()) {
+          await recordAttempt(ip, IP_WINDOW_SECONDS);
+          return null;
+        }
+        if (!(await bcrypt.compare(parsed.data.password, u.passwordHash))) {
+          const failed = u.failedLogins + 1;
+          await prisma.portalUser.update({ where: { id: u.id }, data: { failedLogins: failed, lockedUntil: failed >= MAX_FAILED ? new Date(Date.now() + LOCK_MINUTES * 60_000) : null } });
+          await recordAttempt(ip, IP_WINDOW_SECONDS);
+          return null;
+        }
+        await prisma.portalUser.update({ where: { id: u.id }, data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() } });
         return { id: `portal:${u.id}`, email: u.email, name: u.name, nameAr: u.customer.nameAr, nameEn: u.customer.nameEn, locale: u.locale, isSuperAdmin: false, companyIds: [], activeCompanyId: null, portal: true, customerId: u.customerId, companyId: u.companyId } as unknown as import("next-auth").User;
       },
     }),
     Credentials({
       credentials: { email: {}, password: {} },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
         const { email, password } = parsed.data;
+        const ip = ipKey(request);
+        if (await isRateLimited(ip, IP_ATTEMPTS, IP_WINDOW_SECONDS)) return null;
         const user = await prisma.user.findFirst({
           where: { email: email.toLowerCase(), isActive: true },
           include: { companies: { select: { companyId: true, isDefault: true } } },
         });
-        if (!user) return null;
-        if (user.lockedUntil && user.lockedUntil > new Date()) return null;
+        if (!user) {
+          await burnPasswordCheck(password);
+          await recordAttempt(ip, IP_WINDOW_SECONDS);
+          return null;
+        }
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
+          await recordAttempt(ip, IP_WINDOW_SECONDS);
+          return null;
+        }
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) {
+          await recordAttempt(ip, IP_WINDOW_SECONDS);
           const failed = user.failedLogins + 1;
           await prisma.user.update({
             where: { id: user.id },
@@ -112,6 +150,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.portal = u.portal ?? false;
         token.customerId = u.customerId ?? null;
         token.companyId = u.companyId ?? null;
+        token.signedInAt = Math.floor(Date.now() / 1000);
       }
       if (trigger === "update" && session) {
         const s = session as Record<string, unknown>;
@@ -131,6 +170,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.portal = Boolean(token.portal);
       session.user.customerId = (token.customerId as string | undefined) ?? undefined;
       session.user.companyId = (token.companyId as string | undefined) ?? undefined;
+      session.user.tokenIssuedAt = (token.signedInAt as number | undefined) ?? undefined;
       return session;
     },
   },

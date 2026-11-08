@@ -5,7 +5,7 @@ import { routing } from "@/i18n/routing";
 
 const intl = createMiddleware(routing);
 
-const PUBLIC = ["/login", "/forgot-password", "/portal/login"];
+const PUBLIC = ["/login", "/forgot-password", "/reset-password", "/portal/login"];
 
 export default async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -17,7 +17,8 @@ export default async function proxy(req: NextRequest) {
     const token = await getToken({
       req,
       secret: process.env.AUTH_SECRET,
-      secureCookie: req.nextUrl.protocol === "https:",
+      // Behind Railway TLS ends at the edge, so trust which cookie the browser actually sent.
+      secureCookie: req.cookies.getAll().some((c) => c.name.startsWith("__Secure-authjs.session-token")),
     });
     const isPortalRoute = stripped === "/portal" || stripped.startsWith("/portal/");
     const locale = pathname.match(/^\/(ar|en)(?=\/|$)/)?.[1] ?? routing.defaultLocale;

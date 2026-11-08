@@ -16,8 +16,9 @@ export const hrSettingsSchema = z.object({
 });
 export type HrSettingsInput = z.infer<typeof hrSettingsSchema>;
 
+/** Creates the defaults only when missing: an upsert on every read would write an audit entry each time. */
 export async function getHrSettings(companyId: string) {
-  return prisma.hrSettings.upsert({ where: { companyId }, create: { companyId }, update: {} });
+  return (await prisma.hrSettings.findUnique({ where: { companyId } })) ?? prisma.hrSettings.upsert({ where: { companyId }, create: { companyId }, update: {} });
 }
 export async function saveHrSettings(session: AppSession, input: HrSettingsInput) {
   return prisma.hrSettings.upsert({ where: { companyId: session.companyId }, create: { companyId: session.companyId, ...input, updatedById: session.userId }, update: { ...input, updatedById: session.userId } });

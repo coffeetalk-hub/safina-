@@ -2,17 +2,16 @@
 
 import { z } from "zod";
 import { runAction } from "@/core/action";
-import { requestSchema, saveRequest, submitRequest, cancelRequest } from "./requests";
+import { requestSchema, saveRequest, submitRequest, cancelRequest, deleteRequest } from "./requests";
 import { rfqSchema, saveRfq, rfqFromRequest, setRfqStatus, quoteSchema, saveQuote, awardRfq } from "./rfq";
 import { poSchema, savePurchaseOrder, confirmPurchaseOrder, markPoSent, cancelPurchaseOrder, convertPoToBill } from "./orders";
 import { contracts, contractSchema } from "./contracts";
 import { evaluations, evaluationSchema } from "./evaluations";
-import { prisma } from "@/lib/prisma";
 
-export async function saveRequestAction(input: unknown) { const e = Boolean((input as { id?: string })?.id); return runAction({ permission: `purchasing.request:${e ? "edit" : "create"}`, schema: requestSchema }, input, async (d, s) => { const r = await saveRequest(s, d); return { id: r.id, number: r.number }; }); }
-export async function submitRequestAction(id: string) { return runAction({ permission: "purchasing.request:edit" }, null, (_d, s) => submitRequest(s, id)); }
-export async function cancelRequestAction(id: string) { return runAction({ permission: "purchasing.request:edit" }, null, (_d, s) => cancelRequest(s, id)); }
-export async function deleteRequestAction(id: string) { return runAction({ permission: "purchasing.request:delete" }, null, async (_d, s) => { const r = await prisma.purchaseRequest.findFirst({ where: { id, companyId: s.companyId } }); if (!r || r.status !== "DRAFT") throw new Error("NOT_DRAFT"); return prisma.purchaseRequest.delete({ where: { id } }); }); }
+export async function saveRequestAction(input: unknown) { const a = (input as { id?: string })?.id ? "edit" : "create"; return runAction({ permission: [`purchasing.request:${a}`, `purchasing.myRequest:${a}`], schema: requestSchema }, input, async (d, s) => { const r = await saveRequest(s, d); return { id: r.id, number: r.number }; }); }
+export async function submitRequestAction(id: string) { return runAction({ permission: ["purchasing.request:edit", "purchasing.myRequest:edit"] }, null, (_d, s) => submitRequest(s, id)); }
+export async function cancelRequestAction(id: string) { return runAction({ permission: ["purchasing.request:edit", "purchasing.myRequest:edit"] }, null, (_d, s) => cancelRequest(s, id)); }
+export async function deleteRequestAction(id: string) { return runAction({ permission: ["purchasing.request:delete", "purchasing.myRequest:delete"] }, null, (_d, s) => deleteRequest(s, id)); }
 
 export async function saveRfqAction(input: unknown) { const e = Boolean((input as { id?: string })?.id); return runAction({ permission: `purchasing.rfq:${e ? "edit" : "create"}`, schema: rfqSchema }, input, (d, s) => saveRfq(s, d)); }
 export async function rfqFromRequestAction(input: unknown) { return runAction({ permission: "purchasing.rfq:create", schema: z.object({ requestId: z.string(), vendorIds: z.array(z.string()).min(1) }) }, input, (d, s) => rfqFromRequest(s, d.requestId, d.vendorIds)); }

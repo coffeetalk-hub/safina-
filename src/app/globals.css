@@ -122,3 +122,122 @@
 @media print {
   .no-print { display: none !important; }
 }
+
+/* ─────────────── Punch in / punch out ─────────────── */
+.punch-dial {
+  --punch-color: var(--primary);
+  --punch-accent: oklch(0.72 0.14 75);
+  position: relative;
+  flex: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.punch-dial[data-phase="IN"] { --punch-color: oklch(0.6 0.15 155); }
+.punch-dial[data-phase="OUT"] { --punch-color: oklch(0.52 0.03 255); }
+.punch-dial[data-phase="ON_LEAVE"] { --punch-color: oklch(0.7 0.02 255); }
+.punch-dial[data-goal] { --punch-accent: oklch(0.8 0.16 90); }
+.punch-dial[data-goal] .punch-progress { stroke: var(--punch-accent); }
+
+.punch-track { fill: none; stroke: var(--muted); stroke-width: 7; }
+.punch-progress {
+  fill: none;
+  stroke: var(--punch-color);
+  stroke-width: 7;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s linear, stroke 400ms ease;
+}
+.punch-hold {
+  fill: none;
+  stroke: var(--punch-accent);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dashoffset: 100;
+  transition: stroke-dashoffset 220ms ease-out;
+}
+.punch-dial[data-gesture="holding"] .punch-hold { stroke-dashoffset: 0; transition: stroke-dashoffset 850ms linear; }
+.punch-dial[data-gesture="saving"] .punch-hold,
+.punch-dial[data-gesture="success"] .punch-hold { stroke-dashoffset: 0; }
+
+.punch-button {
+  position: absolute;
+  inset: 17%;
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  color: white;
+  background: radial-gradient(circle at 32% 26%, color-mix(in oklch, var(--punch-color), white 22%), var(--punch-color) 68%);
+  box-shadow: 0 10px 24px -8px color-mix(in oklch, var(--punch-color), transparent 35%), inset 0 1px 0 color-mix(in oklch, white, transparent 72%);
+  cursor: pointer;
+  touch-action: none;
+  transition: transform 160ms cubic-bezier(.3, 1.4, .5, 1), background 400ms ease, box-shadow 200ms ease;
+}
+.punch-button:hover:not(:disabled) { transform: scale(1.03); }
+.punch-button:focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
+.punch-button:disabled { cursor: not-allowed; opacity: .7; }
+.punch-dial[data-gesture="holding"] .punch-button { transform: scale(.93); box-shadow: 0 3px 10px -4px color-mix(in oklch, var(--punch-color), transparent 30%); }
+.punch-dial[data-gesture="denied"] .punch-button { animation: punch-shake 420ms ease; }
+
+.punch-print { position: relative; display: block; width: 52%; height: 52%; overflow: hidden; }
+.punch-scan {
+  position: absolute;
+  inset-inline: -10%;
+  top: 0;
+  height: 26%;
+  opacity: 0;
+  background: linear-gradient(to bottom, transparent, color-mix(in oklch, white, transparent 25%), transparent);
+}
+.punch-dial[data-gesture="holding"] .punch-scan { opacity: 1; animation: punch-scan 850ms ease-in-out; }
+
+.punch-check-icon { animation: punch-pop 420ms cubic-bezier(.3, 1.5, .5, 1); }
+.punch-check { fill: none; stroke: white; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 48; animation: punch-draw 380ms 90ms ease-out both; }
+
+.punch-halo, .punch-ripple { position: absolute; inset: 14%; border-radius: 9999px; background: var(--punch-color); pointer-events: none; }
+.punch-halo { opacity: .22; animation: punch-breathe 2.8s ease-in-out infinite; }
+.punch-ripple { opacity: 0; animation: punch-ripple 2.8s ease-out infinite; }
+.punch-ripple-late { animation-delay: 1.4s; }
+
+.punch-orbit { position: absolute; inset: 0; animation: punch-spin 60s linear infinite; pointer-events: none; }
+.punch-orbit-dot { position: absolute; top: 1.2%; left: 50%; width: 7%; aspect-ratio: 1; margin-left: -3.5%; border-radius: 9999px; background: var(--punch-accent); box-shadow: 0 0 8px var(--punch-accent); }
+
+.punch-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px;
+  border-radius: 9999px;
+  background: var(--hue);
+  pointer-events: none;
+  animation: punch-burst 900ms cubic-bezier(.15, .7, .3, 1) both;
+}
+
+.punch-digit { display: inline-block; animation: punch-digit 260ms cubic-bezier(.2, .9, .3, 1); }
+
+.punch-pill { position: relative; }
+.punch-pill-live { border-color: oklch(0.6 0.15 155 / .55); color: oklch(0.45 0.13 155); }
+.punch-live-dot { position: relative; display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: oklch(0.6 0.15 155); }
+.punch-live-dot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: inherit; animation: punch-ripple 1.8s ease-out infinite; }
+
+@keyframes punch-breathe { 0%, 100% { transform: scale(1); opacity: .24; } 50% { transform: scale(1.12); opacity: .1; } }
+@keyframes punch-ripple { 0% { transform: scale(.9); opacity: .32; } 100% { transform: scale(1.55); opacity: 0; } }
+@keyframes punch-spin { to { transform: rotate(360deg); } }
+@keyframes punch-scan { 0% { transform: translateY(-110%); } 100% { transform: translateY(420%); } }
+@keyframes punch-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 45% { transform: translateX(5px); } 70% { transform: translateX(-3px); } }
+@keyframes punch-pop { 0% { transform: scale(.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes punch-draw { from { stroke-dashoffset: 48; } to { stroke-dashoffset: 0; } }
+@keyframes punch-burst {
+  0% { transform: rotate(var(--angle)) translateY(calc(-.5 * var(--punch-burst))) scale(1); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: rotate(var(--angle)) translateY(calc(-1 * var(--punch-burst))) scale(.35); opacity: 0; }
+}
+@keyframes punch-digit { from { transform: translateY(45%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .punch-halo, .punch-ripple, .punch-orbit, .punch-particle, .punch-scan, .punch-live-dot::after { animation: none; }
+  .punch-ripple, .punch-particle { display: none; }
+  .punch-digit, .punch-check-icon, .punch-check, .punch-dial[data-gesture="denied"] .punch-button { animation: none; }
+  .punch-check { stroke-dashoffset: 0; }
+  .punch-button, .punch-progress { transition: none; }
+}

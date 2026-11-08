@@ -10,12 +10,12 @@ import { LeaveEditor } from "./client";
 
 export default async function LeaveRequestPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ employeeId?: string }> }) {
   const { id } = await params; const sp = await searchParams;
-  const { session, locale, perms } = await hrPage("leave");
+  const { session, locale, perms } = await hrPage("leave", undefined, { selfService: true });
   const [lk, types, me] = await Promise.all([financeLookups(session.companyId, locale), leaveTypes.all(session, parseListParams({})), myEmployee(session)]);
-  const allowed = await allowedEmployeeIds(session);
+  const allowed = await allowedEmployeeIds(session, "leave");
   const typeOpts = (types as { id: string; code: string; nameAr: string; nameEn: string; maxDaysPerRequest: number | null; isPaid: boolean }[]).map((x) => ({ value: x.id, label: locale === "ar" ? x.nameAr : x.nameEn, code: x.code, max: x.maxDaysPerRequest, isPaid: x.isPaid }));
   const employeeOpts = allowed ? lk.employees.filter((e) => allowed.includes(e.value)) : lk.employees;
-  const defaultEmp = sp.employeeId ?? me?.id ?? (allowed?.[0] ?? "");
+  const defaultEmp = allowed ? (allowed[0] ?? "") : (sp.employeeId ?? me?.id ?? "");
   if (id === "new") {
     const balances = defaultEmp ? await balancesFor(session.companyId, defaultEmp) : [];
     return <LeaveEditor doc={null} employees={employeeOpts} types={typeOpts} defaultEmployeeId={defaultEmp} balances={plain(balances)} perms={{ ...perms, approve: perms.approve }} />;

@@ -119,11 +119,13 @@ Legend: ✅ done · 🔄 in progress · ⬜ not started · ⚠️ needs your inp
 
 
 ## Known gaps / decisions to confirm
-- ZATCA: stub transport only (see above). Seller address fields for the XML come from Company (address/city) — add building no./district/postal code to Company settings if you want full ZATCA address compliance.
+The full list of remaining work is in `docs/HANDOFF.md`.
+
+- ZATCA: signing and transport are stubs (see above), so invoices carry the Phase 1 QR until EGS onboarding. Building no., district and postal code are on the Company form and feed the XML.
 - Opening-balance import posts to the first day of the latest OPEN fiscal year.
 - Multi-currency: rates are per document (manual) with a rate table lookup helper; FX revaluation entries are not automated.
-- Hosting: built self-host-friendly (local disk storage, cron via HTTP routes). For Vercel add `vercel.json` crons and swap `StorageProvider` to S3-compatible.
-- Email: without `SMTP_HOST`, outbox rows are marked sent in dev mode (no email leaves the box).
+- Hosting: Railway, see `docs/DEPLOY-RAILWAY.md`. One service with a volume for files; background jobs run in-process.
+- Email: set `RESEND_API_KEY` or `SMTP_HOST`. Without one, mail is marked sent in development and stays queued in production.
 - Hijri dates: display helper exists (`formatHijri`), not yet surfaced in UI.
 - HR: GOSI rates, leave entitlements, sick-pay tiers and EOSB basis are seeded with the published rules but **must be verified by HR/legal** before production. The WPS file is a generic CSV (adapt column order to your bank). End-of-service accrual (monthly provision) is not automated — the settlement posts the full expense on exit. Payroll currently supports one run per period per branch.
 - Purchasing: no goods receipt (by design — no inventory); a PO is billed in one step (`BILLED`); `PARTIALLY_BILLED` is reserved for a future partial-billing flow. Vendor quotes are keyed in by staff (no vendor portal).

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { getSession, can } from "@/core/auth/session";
+import { getSession, canAny } from "@/core/auth/session";
 import { parseListParams } from "@/components/data-table/types";
 import { buildExcel, excelResponse } from "@/core/export/excel";
 import { getExporter } from "@/core/export/registry";
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ resource: s
   if (!session) return new Response("Unauthorized", { status: 401 });
   const exporter = await getExporter(resource);
   if (!exporter) return new Response("Unknown resource", { status: 404 });
-  if (!can(session, exporter.permission)) return new Response("Forbidden", { status: 403 });
+  if (!canAny(session, exporter.permission)) return new Response("Forbidden", { status: 403 });
 
   const sp = Object.fromEntries(req.nextUrl.searchParams.entries());
   const locale = sp.locale === "en" ? "en" : "ar";

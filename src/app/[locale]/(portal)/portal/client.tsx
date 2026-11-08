@@ -23,7 +23,7 @@ export function PortalHome({ data, labels }: { data: Data; labels: { title: stri
   const overdue = data.invoices.filter((i) => i.kind !== "CREDIT_NOTE" && i.total - i.paidAmount > 0.005 && new Date(i.dueDate) < new Date()).length;
   return (
     <div className="mx-auto max-w-5xl p-4 space-y-4">
-      <header className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-background p-4">
+      <header className="sticky top-2 z-30 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-background p-4 no-print">
         <div><div className="text-sm text-muted-foreground">{ar ? data.company.nameAr : data.company.nameEn} · {labels.title}</div><div className="text-lg font-semibold">{ar ? data.customer.nameAr : data.customer.nameEn} <span className="text-muted-foreground text-sm" dir="ltr">{data.customer.code}</span></div></div>
         <div className="flex gap-2"><Button variant="ghost" size="sm" asChild><Link href="/portal" locale={ar ? "en" : "ar"}>{ar ? "English" : "العربية"}</Link></Button><Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: `/${locale}/portal/login` })}><LogOut /> {t("signOut")}</Button></div>
       </header>

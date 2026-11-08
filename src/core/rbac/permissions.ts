@@ -1,6 +1,12 @@
 /**
  * Permission catalogue. Key format: "<module>.<resource>:<action>".
  * Actions: view | create | edit | approve | delete
+ *
+ * Scope rule: every resource permission is company-wide. `hr.leave:view` means "see
+ * every employee's leave". Personal access has its own resources, so that a role
+ * can never reach other people's data by accident:
+ *   - hr.self             the signed-in user's own HR record (leave, attendance, payslips…)
+ *   - purchasing.myRequest purchase requests the signed-in user raised
  */
 export const ACTIONS = ["view", "create", "edit", "approve", "delete"] as const;
 export type Action = (typeof ACTIONS)[number];
@@ -16,8 +22,8 @@ export const RESOURCES: Record<string, string[]> = {
     "pettyCash", "asset", "vat", "zatca", "budget", "report",
   ],
   sales: ["lead", "opportunity", "quotation", "order", "priceList", "portal", "report"],
-  purchasing: ["request", "rfq", "order", "contract", "evaluation", "report"],
-  hr: ["employee", "contract", "document", "attendance", "leave", "payroll", "loan", "eosb", "wps", "report"],
+  purchasing: ["request", "myRequest", "rfq", "order", "contract", "evaluation", "report"],
+  hr: ["self", "employee", "contract", "document", "attendance", "leave", "payroll", "loan", "eosb", "wps", "report"],
 };
 
 export type Permission = `${string}.${string}:${Action}`;
@@ -34,6 +40,9 @@ export function perm(module: keyof typeof RESOURCES, resource: string, action: A
   return `${module}.${resource}:${action}`;
 }
 
+/** Master data finance staff work with day to day. Deliberately excludes users, roles, audit, settings and the employee directory. */
+const FINANCE_MASTER_DATA = ["account", "costCenter", "customer", "vendor", "item", "tax", "branch", "fiscal", "currency", "attachment", "import", "dashboard"];
+
 /** Built-in role templates seeded for every company. */
 export const ROLE_TEMPLATES: Record<string, { nameAr: string; nameEn: string; permissions: () => Permission[] }> = {
   ADMIN: { nameAr: "مدير النظام", nameEn: "Administrator", permissions: allPermissions },
@@ -42,16 +51,21 @@ export const ROLE_TEMPLATES: Record<string, { nameAr: string; nameEn: string; pe
     nameEn: "Accountant",
     permissions: () => [
       ...byModule("finance", ["view", "create", "edit"]),
-      ...byModule("foundation", ["view"]),
+      ...forResources("foundation", FINANCE_MASTER_DATA, ["view"]),
       ...forResources("foundation", ["account", "costCenter", "customer", "vendor", "item", "tax"], ["create", "edit"]),
-      ...byModule("sales", ["view"]),
-      ...byModule("purchasing", ["view"]),
+      ...forResources("sales", ["quotation", "order", "report"], ["view"]),
+      ...forResources("purchasing", ["order", "contract", "report"], ["view"]),
     ],
   },
   FINANCE_MANAGER: {
     nameAr: "مدير مالي",
     nameEn: "Finance Manager",
-    permissions: () => [...byModule("finance"), ...byModule("foundation", ["view"]), ...byModule("sales", ["view", "approve"]), ...byModule("purchasing", ["view", "approve"])],
+    permissions: () => [
+      ...byModule("finance"),
+      ...forResources("foundation", FINANCE_MASTER_DATA, ["view"]),
+      ...forResources("sales", ["quotation", "order", "priceList", "report"], ["view", "approve"]),
+      ...forResources("purchasing", ["request", "rfq", "order", "contract", "evaluation", "report"], ["view", "approve"]),
+    ],
   },
   SALES: {
     nameAr: "مبيعات",
@@ -66,7 +80,7 @@ export const ROLE_TEMPLATES: Record<string, { nameAr: string; nameEn: string; pe
     nameAr: "مشتريات",
     nameEn: "Purchasing",
     permissions: () => [
-      ...byModule("purchasing", ["view", "create", "edit"]),
+      ...forResources("purchasing", ["request", "rfq", "order", "contract", "evaluation", "report"], ["view", "create", "edit"]),
       ...forResources("foundation", ["vendor", "item"], ["view", "create", "edit"]),
       ...forResources("finance", ["bill"], ["view", "create"]),
     ],
@@ -80,15 +94,20 @@ export const ROLE_TEMPLATES: Record<string, { nameAr: string; nameEn: string; pe
     nameAr: "موظف",
     nameEn: "Employee",
     permissions: () => [
-      ...forResources("hr", ["attendance", "leave"], ["view", "create"]),
-      ...forResources("purchasing", ["request"], ["view", "create"]),
+      ...forResources("hr", ["self"], ["view", "create", "edit", "delete"]),
+      ...forResources("purchasing", ["myRequest"], ["view", "create", "edit", "delete"]),
       ...forResources("foundation", ["dashboard"], ["view"]),
     ],
   },
   APPROVER: {
     nameAr: "معتمد",
     nameEn: "Approver",
-    permissions: () => [...byModule("finance", ["view", "approve"]), ...byModule("sales", ["view", "approve"]), ...byModule("purchasing", ["view", "approve"]), ...byModule("hr", ["view", "approve"])],
+    permissions: () => [
+      ...byModule("finance", ["view", "approve"]),
+      ...forResources("sales", ["quotation", "order", "report"], ["view", "approve"]),
+      ...forResources("purchasing", ["request", "rfq", "order", "contract", "report"], ["view", "approve"]),
+      ...forResources("hr", ["leave", "loan"], ["view", "approve"]),
+    ],
   },
 };
 

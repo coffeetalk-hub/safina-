@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { requirePermission, requireSession, type AppSession, ForbiddenError } from "@/core/auth/session";
 import { runWithContext } from "@/core/context";
-import type { Permission } from "@/core/rbac/permissions";
 import { Prisma } from "@prisma/client";
 
 export type ActionResult<T = unknown> =
@@ -14,7 +13,7 @@ export type ActionResult<T = unknown> =
  * and converts thrown errors into a serialisable result.
  */
 export async function runAction<S extends z.ZodTypeAny, T>(
-  opts: { permission?: Permission | string; schema?: S },
+  opts: { permission?: string | readonly string[]; schema?: S },
   input: unknown,
   fn: (data: z.infer<S>, session: AppSession) => Promise<T>,
 ): Promise<ActionResult<T>> {
@@ -53,7 +52,13 @@ function toMessage(e: unknown): string {
   if (e instanceof Error) {
     // Next.js redirect() throws — rethrow so navigation works
     if ((e as { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) throw e;
+    // Database errors carry SQL and schema details: log them, never show them to the user.
+    if (e.name.startsWith("PrismaClient")) {
+      console.error("[action] database error", e);
+      return "UNKNOWN";
+    }
     return e.message;
   }
+  console.error("[action] unexpected error", e);
   return "UNKNOWN";
 }

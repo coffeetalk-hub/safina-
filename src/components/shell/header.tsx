@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Avatar } from "@/components/ui/misc";
 import { Sidebar } from "./sidebar";
+import { PunchPill } from "@/components/punch/punch-widgets";
 import { switchCompanyAction, switchLocaleAction } from "./actions";
 import type { NavGroup } from "./nav-config";
 
@@ -30,6 +31,7 @@ export function Header({ user, companies, activeCompanyId, unread, permissions, 
   const [open, setOpen] = React.useState(false);
   const name = locale === "ar" ? user.nameAr : user.nameEn;
   const company = companies.find((c) => c.id === activeCompanyId);
+  const signOutNow = () => signOut({ callbackUrl: `/${locale}/login` });
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-1 sm:gap-2 border-b bg-background/95 px-2 sm:px-3 backdrop-blur no-print overflow-hidden">
@@ -40,14 +42,21 @@ export function Header({ user, companies, activeCompanyId, unread, permissions, 
         <SheetContent side="start" className="p-0 w-72">
           <SheetTitle className="sr-only">Menu</SheetTitle>
           <div className="p-4 font-bold">⛵ Safina ERP</div>
-          <Sidebar permissions={permissions} extraGroups={extraGroups} onNavigate={() => setOpen(false)} />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <Sidebar permissions={permissions} extraGroups={extraGroups} onNavigate={() => setOpen(false)} />
+          </div>
+          <div className="border-t p-3">
+            <Button variant="outline" className="w-full" onClick={signOutNow}>
+              <LogOut className="rtl:rotate-180" /> {t("signOut")}
+            </Button>
+          </div>
         </SheetContent>
       </Sheet>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="min-w-0 max-w-[140px] sm:max-w-[220px]">
-            <Building2 className="shrink-0" /> <span className="truncate">{company ? (locale === "ar" ? company.nameAr : company.nameEn) : t("selectCompany")}</span>
+          <Button variant="outline" size="sm" className="min-w-0 max-w-[92px] sm:max-w-[220px]">
+            <Building2 className="shrink-0" /> <span className="truncate max-[359px]:hidden">{company ? (locale === "ar" ? company.nameAr : company.nameEn) : t("selectCompany")}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64">
@@ -69,6 +78,7 @@ export function Header({ user, companies, activeCompanyId, unread, permissions, 
       </DropdownMenu>
 
       <div className="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+        <PunchPill />
         <Button
           variant="ghost"
           size="sm"
@@ -109,11 +119,11 @@ export function Header({ user, companies, activeCompanyId, unread, permissions, 
                 <User /> {t("profile")}
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" onClick={() => signOut({ callbackUrl: `/${locale}/login` })}>
-              <LogOut /> {t("signOut")}
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <Button variant="outline" size="sm" className="px-2 sm:px-3" onClick={signOutNow} aria-label={t("signOut")} title={t("signOut")} data-testid="sign-out">
+          <LogOut className="rtl:rotate-180" /> <span className="hidden min-[420px]:inline">{t("signOut")}</span>
+        </Button>
       </div>
     </header>
   );

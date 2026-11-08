@@ -10,7 +10,7 @@ export const attendanceSchema = z.object({ id: z.string().nullable().optional(),
 
 async function where(session: AppSession, p: ListParams) {
   const w: Record<string, unknown> = { companyId: session.companyId };
-  const allowed = await allowedEmployeeIds(session);
+  const allowed = await allowedEmployeeIds(session, "attendance");
   if (allowed) w.employeeId = { in: allowed };
   if (p.filters.employeeId) w.employeeId = allowed ? { in: allowed.filter((x) => x === p.filters.employeeId) } : p.filters.employeeId;
   if (p.filters.status) w.status = p.filters.status;
@@ -27,6 +27,8 @@ export async function listAttendance(session: AppSession, p: ListParams): Promis
 export async function allAttendance(session: AppSession, p: ListParams) { return withEmployee(session.companyId, await prisma.attendanceRecord.findMany({ where: await where(session, p), orderBy: { day: "desc" }, take: 20_000 })); }
 
 export async function saveAttendance(session: AppSession, input: z.infer<typeof attendanceSchema>) {
+  const inCompany = await prisma.employee.count({ where: { id: input.employeeId, companyId: session.companyId } });
+  if (!inCompany) throw new Error("NOT_FOUND");
   const s = await getHrSettings(session.companyId);
   const ci = input.checkIn || null, co = input.checkOut || null;
   const m = attendanceMetrics(ci, co, s.workStart, s.workEnd, s.graceMinutes, Number(s.dailyHours));

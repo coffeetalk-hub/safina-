@@ -44,7 +44,7 @@ export function RequestEditor({ doc, lookups, can, extra, attachments, canAttach
   const items = React.useMemo(() => lookups.items.filter((i) => i.meta?.purchasable), [lookups.items]);
   const accounts = React.useMemo(() => lookups.accounts.filter((a) => a.meta?.type === "EXPENSE" || a.meta?.type === "ASSET"), [lookups.accounts]);
 
-  const [head, setHead] = React.useState({ requestDate: doc?.requestDate.slice(0, 10) ?? today, neededBy: doc?.neededBy?.slice(0, 10) ?? "", requesterId: doc?.requesterId ?? "", costCenterId: doc?.costCenterId ?? "", branchId: doc?.branchId ?? "", purpose: doc?.purpose ?? "", priority: doc?.priority ?? "NORMAL", notes: doc?.notes ?? "" });
+  const [head, setHead] = React.useState({ requestDate: doc?.requestDate.slice(0, 10) ?? today, neededBy: doc?.neededBy?.slice(0, 10) ?? "", requesterId: doc?.requesterId ?? (lookups.employees.length === 1 ? lookups.employees[0].value : ""), costCenterId: doc?.costCenterId ?? "", branchId: doc?.branchId ?? "", purpose: doc?.purpose ?? "", priority: doc?.priority ?? "NORMAL", notes: doc?.notes ?? "" });
   const [lines, setLines] = React.useState<Line[]>(doc?.lines.map((l) => ({ ...l })) ?? [emptyLine()]);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [rfqOpen, setRfqOpen] = React.useState(false);
@@ -102,7 +102,7 @@ export function RequestEditor({ doc, lookups, can, extra, attachments, canAttach
               <TableHeader><TableRow>
                 <TableHead className="w-8">#</TableHead><TableHead className="min-w-[180px]">{tfin("item")}</TableHead><TableHead className="min-w-[200px]">{tf("description")}</TableHead>
                 <TableHead className="w-20 text-end">{tfin("qty")}</TableHead><TableHead className="w-20">{tf("unit")}</TableHead><TableHead className="w-28 text-end">{t("estimatedPrice")}</TableHead>
-                <TableHead className="min-w-[180px]">{tf("expenseAccount")}</TableHead><TableHead className="min-w-[130px]">{tf("costCenter")}</TableHead><TableHead className="w-28 text-end">{tfin("total")}</TableHead>{editable && <TableHead className="w-10" />}
+                {accounts.length > 0 && <TableHead className="min-w-[180px]">{tf("expenseAccount")}</TableHead>}<TableHead className="min-w-[130px]">{tf("costCenter")}</TableHead><TableHead className="w-28 text-end">{tfin("total")}</TableHead>{editable && <TableHead className="w-10" />}
               </TableRow></TableHeader>
               <TableBody>
                 {lines.map((l, i) => (
@@ -116,7 +116,7 @@ export function RequestEditor({ doc, lookups, can, extra, attachments, canAttach
                     <TableCell><Input className="h-8 text-end" type="number" step="0.01" min="0" dir="ltr" value={l.quantity} disabled={!editable} onChange={(e) => upd(i, { quantity: e.target.value })} /></TableCell>
                     <TableCell><Input className="h-8" dir="ltr" value={l.unit} disabled={!editable} onChange={(e) => upd(i, { unit: e.target.value })} /></TableCell>
                     <TableCell><Input className="h-8 text-end" type="number" step="0.01" min="0" dir="ltr" value={l.estimatedPrice} disabled={!editable} onChange={(e) => upd(i, { estimatedPrice: e.target.value })} /></TableCell>
-                    <TableCell><Combobox size="sm" options={accounts} value={l.expenseAccountId} disabled={!editable} onChange={(v) => upd(i, { expenseAccountId: v })} /></TableCell>
+                    {accounts.length > 0 && <TableCell><Combobox size="sm" options={accounts} value={l.expenseAccountId} disabled={!editable} onChange={(v) => upd(i, { expenseAccountId: v })} /></TableCell>}
                     <TableCell><Combobox size="sm" options={lookups.costCenters} value={l.costCenterId} disabled={!editable} onChange={(v) => upd(i, { costCenterId: v })} /></TableCell>
                     <TableCell className="text-end tabular-nums" dir="ltr">{formatMoney(Number(l.quantity || 0) * Number(l.estimatedPrice || 0), locale)}</TableCell>
                     {editable && <TableCell><Button type="button" variant="ghost" size="icon-sm" onClick={() => setLines((p) => p.filter((_, j) => j !== i))} disabled={lines.length <= 1}><Trash2 className="size-3.5" /></Button></TableCell>}
@@ -150,7 +150,7 @@ export function RequestEditor({ doc, lookups, can, extra, attachments, canAttach
           {doc && ["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED"].includes(doc.status) && can.edit && <ConfirmButton title={tfin("cancelConfirm")} action={() => cancelRequestAction(doc.id)} variant="ghost"><Ban /> {tfin("cancelDoc")}</ConfirmButton>}
           {doc && doc.status === "DRAFT" && can.delete && <ConfirmButton title={tc("deleteConfirmTitle")} action={() => deleteRequestAction(doc.id)} onSuccess={() => router.push(`/${locale}/purchasing/requests`)}><Trash2 /> {tc("delete")}</ConfirmButton>}
         </div>
-        {doc && <AttachmentsPanel entityType="PurchaseRequest" entityId={doc.id} items={attachments} canUpload={canAttach.upload} canDelete={canAttach.delete} />}
+        {doc && (attachments.length > 0 || canAttach.upload) && <AttachmentsPanel entityType="PurchaseRequest" entityId={doc.id} items={attachments} canUpload={canAttach.upload} canDelete={canAttach.delete} />}
       </div>
       <Dialog open={rfqOpen} onOpenChange={setRfqOpen}>
         <DialogContent>

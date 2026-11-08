@@ -35,4 +35,14 @@ export async function financeLookups(companyId: string, locale: string) {
 }
 export type FinanceLookups = Awaited<ReturnType<typeof financeLookups>>;
 
+/** What an employee raising their own purchase request may see: no accounts, parties, prices or colleagues. */
+export function requesterLookups(lk: FinanceLookups, employeeId: string | null): FinanceLookups {
+  return {
+    ...lk,
+    accounts: [], customers: [], vendors: [], bankAccounts: [], taxCodes: [], salespersons: [],
+    employees: lk.employees.filter((e) => e.value === employeeId),
+    items: lk.items.filter((i) => i.meta?.purchasable).map((i) => ({ value: i.value, label: i.label, meta: { nameAr: i.meta?.nameAr, nameEn: i.meta?.nameEn, unit: i.meta?.unit, purchasable: true } })),
+  };
+}
+
 export { STATUS_TONES } from "./constants";

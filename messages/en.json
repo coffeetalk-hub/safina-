@@ -59,7 +59,22 @@
     "password": "Password",
     "invalidCredentials": "Invalid email or password, or account is locked",
     "heroTitle": "Run your whole business from one place",
-    "heroSubtitle": "Finance, sales, purchasing and HR — bilingual, ZATCA-ready, built for Saudi SMEs."
+    "heroSubtitle": "Finance, sales, purchasing and HR — bilingual, ZATCA-ready, built for Saudi SMEs.",
+    "forgotPassword": "Forgot password?",
+    "forgotTitle": "Reset your password",
+    "forgotHint": "Enter your email and we will send you a link to set a new password.",
+    "sendResetLink": "Send reset link",
+    "resetSent": "If that email is registered, a reset link is on its way. It works for one hour.",
+    "resetTitle": "Choose a new password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "setNewPassword": "Set new password",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "resetDone": "Your password has been changed. You can sign in now.",
+    "resetInvalid": "This reset link is invalid or has expired. Please request a new one.",
+    "customerPortal": "Customer portal",
+    "staffSignIn": "Staff sign in"
   },
   "nav": {
     "groups": {
@@ -193,7 +208,7 @@
     "INVALID_TRANSITION": "This action is not allowed in the document's current status",
     "QUOTE_NOT_RECEIVED": "No quote has been recorded for this vendor",
     "EMPLOYEE_REQUIRED": "Employee is required",
-    "NO_EMPLOYEE_RECORD": "Your user is not linked to an employee record",
+    "NO_EMPLOYEE_RECORD": "Your user account is not linked to an employee record. Ask HR to link it.",
     "END_DATE_REQUIRED": "Fixed-term contracts need an end date",
     "LEAVE_EXCEEDS_MAX": "Exceeds the maximum days allowed per request for this leave type",
     "LEAVE_OVERLAP": "Overlaps another pending or approved leave",
@@ -201,7 +216,10 @@
     "PAYROLL_EXISTS": "A payroll run already exists for this period",
     "HIRE_DATE_REQUIRED": "Employee hire date is missing",
     "NO_SALARY_STRUCTURE": "Employee has no salary structure",
-    "EOSB_EXISTS": "An open end-of-service settlement already exists for this employee"
+    "EOSB_EXISTS": "An open end-of-service settlement already exists for this employee",
+    "pageNotFound": "This page does not exist or you do not have access to it.",
+    "COMPANY_VAT_REQUIRED": "Add the company VAT number before posting tax invoices.",
+    "PUNCH_ON_LEAVE": "You're on approved leave today, so you can't punch in."
   },
   "fields": {
     "code": "Code",
@@ -1088,7 +1106,8 @@
       "new": "New purchase order"
     },
     "expectedDate": "Expected delivery",
-    "vendorQuoteRef": "Vendor quote ref."
+    "vendorQuoteRef": "Vendor quote ref.",
+    "invoiced": "Invoiced"
   },
   "sales": {
     "customer": "Customer",
@@ -1626,9 +1645,37 @@
       "presentDays": "present days",
       "myLeave": "My leave requests",
       "myPayslips": "My payslips",
-      "myAttendance": "My attendance (this month)",
+      "myAttendance": "My attendance",
       "myDocs": "My documents"
     },
     "employeeCount": "Employees"
+  },
+  "punch": {
+    "title": "Attendance",
+    "punchIn": "Punch in",
+    "punchOut": "Punch out",
+    "holdToPunchIn": "Press and hold to punch in",
+    "holdToPunchOut": "Press and hold to punch out",
+    "holdToResume": "Press and hold to punch back in",
+    "keepHolding": "Keep holding until the ring is full",
+    "notStarted": "You haven't punched in yet today",
+    "working": "You're punched in",
+    "finished": "You've punched out for today",
+    "onLeave": "You're on approved leave today",
+    "onLeaveShort": "On leave",
+    "notLinked": "Your account isn't linked to an employee record, so attendance can't be recorded. Ask HR to link it under HR → Employees.",
+    "punchedIn": "Punched in. Have a good day!",
+    "punchedOut": "Punched out. See you next time!",
+    "timeOnClock": "Time since you punched in",
+    "timeInRiyadh": "Current time in Riyadh",
+    "in": "In",
+    "out": "Out",
+    "worked": "Worked",
+    "shiftEnds": "Shift ends",
+    "onTime": "On time",
+    "late": "{duration} late",
+    "hoursMinutes": "{h}h {m}m",
+    "forgotPunchOut": "You didn't punch out on {day}. Ask HR to correct that day.",
+    "minutes": "{m} min"
   }
 }

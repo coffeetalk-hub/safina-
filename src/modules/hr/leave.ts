@@ -15,7 +15,7 @@ export const leaveSchema = z.object({ id: z.string().nullable().optional(), empl
 
 async function where(session: AppSession, p: ListParams) {
   const w: Record<string, unknown> = { companyId: session.companyId };
-  const allowed = await allowedEmployeeIds(session);
+  const allowed = await allowedEmployeeIds(session, "leave");
   if (allowed) w.employeeId = { in: allowed };
   if (p.filters.employeeId && !allowed) w.employeeId = p.filters.employeeId;
   if (p.filters.status) w.status = p.filters.status;
@@ -55,7 +55,7 @@ export async function adjustBalance(session: AppSession, input: { employeeId: st
 }
 
 export async function saveLeave(session: AppSession, input: z.infer<typeof leaveSchema>) {
-  const employeeId = await scopeEmployee(session, input.employeeId);
+  const employeeId = await scopeEmployee(session, "leave", input.employeeId);
   const type = await prisma.leaveType.findFirst({ where: { id: input.leaveTypeId, companyId: session.companyId } });
   if (!type) throw new Error("NOT_FOUND");
   const start = new Date(input.startDate), end = new Date(input.endDate);
@@ -73,6 +73,7 @@ export async function saveLeave(session: AppSession, input: z.infer<typeof leave
     if (input.id) {
       const ex = await tx.leaveRequest.findFirst({ where: { id: input.id, companyId: session.companyId } });
       if (!ex || !["DRAFT", "REJECTED"].includes(ex.status)) throw new Error("NOT_DRAFT");
+      await scopeEmployee(session, "leave", ex.employeeId);
       return tx.leaveRequest.update({ where: { id: input.id }, data: { ...data, status: "DRAFT" } });
     }
     const number = await nextDocumentNumber(tx, session.companyId, "LEAVE", start);
@@ -88,7 +89,7 @@ async function applyApproved(tx: Tx, id: string) {
     await tx.leaveBalance.update({ where: { employeeId_leaveTypeId_year: { employeeId: r.employeeId, leaveTypeId: r.leaveTypeId, year } }, data: { taken: { increment: r.days } } });
   }
   for (let d = new Date(r.startDate); d <= r.endDate; d.setUTCDate(d.getUTCDate() + 1)) {
-    await tx.attendanceRecord.upsert({ where: { employeeId_day: { employeeId: r.employeeId, day: new Date(d) } }, create: { companyId: r.companyId, employeeId: r.employeeId, day: new Date(d), status: "LEAVE", notes: r.number }, update: { status: "LEAVE", checkIn: null, checkOut: null, workedHrs: 0, lateMin: 0, earlyMin: 0, overtimeHrs: 0, notes: r.number } });
+    await tx.attendanceRecord.upsert({ where: { employeeId_day: { employeeId: r.employeeId, day: new Date(d) } }, create: { companyId: r.companyId, employeeId: r.employeeId, day: new Date(d), status: "LEAVE", notes: r.number }, update: { status: "LEAVE", checkIn: null, checkOut: null, punchInAt: null, punchOutAt: null, workedHrs: 0, lateMin: 0, earlyMin: 0, overtimeHrs: 0, notes: r.number } });
   }
   const emp = await tx.employee.findUnique({ where: { id: r.employeeId }, select: { userId: true } });
   if (emp?.userId) await notify(tx, { companyId: r.companyId, userId: emp.userId, type: "LEAVE_APPROVED", titleAr: `تمت الموافقة على إجازتك ${r.number}`, titleEn: `Your leave ${r.number} was approved`, link: "/hr/self", entityType: "LeaveRequest", entityId: r.id });
@@ -104,7 +105,7 @@ export async function submitLeave(session: AppSession, id: string) {
   return prisma.$transaction(async (tx) => {
     const r = await tx.leaveRequest.findFirst({ where: { id, companyId: session.companyId }, include: { leaveType: true } });
     if (!r) throw new Error("NOT_FOUND");
-    await scopeEmployee(session, r.employeeId);
+    await scopeEmployee(session, "leave", r.employeeId);
     if (!["DRAFT", "REJECTED"].includes(r.status)) throw new Error("NOT_DRAFT");
     const req = r.leaveType.requiresApproval ? await submitForApproval(tx, { companyId: session.companyId, docType: "LEAVE", docId: r.id, docNumber: r.number, amount: r.days, requestedById: session.userId, link: `/hr/leave` }) : null;
     if (req) { await tx.leaveRequest.update({ where: { id }, data: { status: "PENDING_APPROVAL", updatedById: session.userId } }); return { status: "PENDING_APPROVAL" }; }
@@ -128,7 +129,7 @@ export async function cancelLeave(session: AppSession, id: string) {
   return prisma.$transaction(async (tx) => {
     const r = await tx.leaveRequest.findFirst({ where: { id, companyId: session.companyId } });
     if (!r || r.status === "CANCELLED") throw new Error("INVALID_TRANSITION");
-    await scopeEmployee(session, r.employeeId);
+    await scopeEmployee(session, "leave", r.employeeId);
     if (r.status === "APPROVED") { if (r.startDate <= new Date() && !session.permissions.has("hr.leave:approve") && !session.permissions.has("*")) throw new Error("INVALID_TRANSITION"); await revertApproved(tx, id); }
     await tx.approvalRequest.updateMany({ where: { docType: "LEAVE", docId: id, status: "PENDING" }, data: { status: "CANCELLED" } });
     return tx.leaveRequest.update({ where: { id }, data: { status: "CANCELLED", updatedById: session.userId } });

@@ -1,6 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { registerWidget } from "@/core/dashboard/registry";
+import { canAny } from "@/core/auth/session";
 import { myPendingApprovals } from "../approvals/service";
+
+const QUICK_LINKS: { label: string; href: string; permission: string | string[] }[] = [
+  { label: "mySelfService", href: "/hr/self", permission: "hr.self:view" },
+  { label: "purchaseRequests", href: "/purchasing/requests", permission: ["purchasing.request:view", "purchasing.myRequest:view"] },
+  { label: "customers", href: "/foundation/customers", permission: "foundation.customer:view" },
+  { label: "vendors", href: "/foundation/vendors", permission: "foundation.vendor:view" },
+  { label: "items", href: "/foundation/items", permission: "foundation.item:view" },
+  { label: "employees", href: "/foundation/employees", permission: "foundation.employee:view" },
+  { label: "import", href: "/foundation/import", permission: "foundation.import:view" },
+  { label: "settings", href: "/foundation/settings", permission: "foundation.settings:view" },
+];
 
 registerWidget({
   key: "pendingApprovals",
@@ -43,15 +55,8 @@ registerWidget({
 });
 registerWidget({
   key: "quickLinks",
-  load: async () => ({
+  load: async (s) => ({
     kind: "links",
-    items: [
-      { label: "customers", href: "/foundation/customers" },
-      { label: "vendors", href: "/foundation/vendors" },
-      { label: "items", href: "/foundation/items" },
-      { label: "employees", href: "/foundation/employees" },
-      { label: "import", href: "/foundation/import" },
-      { label: "settings", href: "/foundation/settings" },
-    ],
+    items: QUICK_LINKS.filter((l) => canAny(s, l.permission)).map(({ label, href }) => ({ label, href })),
   }),
 });

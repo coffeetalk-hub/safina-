@@ -17,7 +17,7 @@ import { formatDate } from "@/lib/dates";
 export default async function PayslipPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await requireSession();
-  if (!can(session, "hr.payroll:view") && !can(session, "hr.attendance:view")) forbidden();
+  if (!can(session, "hr.payroll:view") && !can(session, "hr.self:view")) forbidden();
   const [locale, t, tc] = await Promise.all([getLocale(), getTranslations("hr"), getTranslations("common")]);
   const p = await getPayslip(session, id);
   if (!p) notFound();

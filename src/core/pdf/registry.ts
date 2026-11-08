@@ -3,7 +3,8 @@ import type { AppSession } from "@/core/auth/session";
 
 /** Document PDF generators keyed by doc type (invoice, payslip, …). Modules register theirs. */
 export type PdfGenerator = {
-  permission: string;
+  /** Any one of these grants the document; the renderer still applies ownership. */
+  permission: string | readonly string[];
   render: (session: AppSession, id: string, locale: string) => Promise<{ element: React.ReactElement; fileName: string } | null>;
 };
 

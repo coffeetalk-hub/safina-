@@ -114,7 +114,7 @@ export function EosbPdf({ company, r, printedBy }: { company: PdfCompany; r: Non
 
 const who = (s: { nameAr: string; nameEn: string }, locale: string) => (locale === "ar" ? s.nameAr : s.nameEn);
 export const payslipPdf: PdfGenerator = {
-  permission: "hr.attendance:view", // employees may print their own; getPayslip enforces self-scope
+  permission: ["hr.payroll:view", "hr.self:view"], // getPayslip enforces ownership for hr.self
   render: async (session, id, locale) => { const slip = await getPayslip(session, id); if (!slip) return null; const { company, logoDataUrl } = await companyHeader(session.companyId); return { element: React.createElement(PayslipPdf, { company: { ...company, logoDataUrl }, slip, printedBy: who(session, locale) }), fileName: slip.number }; },
 };
 export const eosbPdf: PdfGenerator = {

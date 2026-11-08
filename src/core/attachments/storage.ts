@@ -13,7 +13,7 @@ class LocalDiskStorage implements StorageProvider {
   private root = path.resolve(/* turbopackIgnore: true */ process.cwd(), process.env.STORAGE_DIR ?? "./storage");
   private full(key: string) {
     const p = path.resolve(this.root, key);
-    if (!p.startsWith(this.root)) throw new Error("INVALID_KEY");
+    if (!p.startsWith(this.root + path.sep)) throw new Error("INVALID_KEY");
     return p;
   }
   async put(key: string, data: Buffer) {

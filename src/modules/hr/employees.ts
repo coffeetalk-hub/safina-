@@ -22,18 +22,29 @@ export async function withEmployee<T extends { employeeId: string }>(companyId: 
 export async function myEmployee(session: AppSession) {
   return prisma.employee.findFirst({ where: { companyId: session.companyId, userId: session.userId }, select: empSelect });
 }
-/** Employees the user may act for: all (hr.employee:view) or only self. Returns null when unrestricted. */
-export async function allowedEmployeeIds(session: AppSession): Promise<string[] | null> {
-  if (can(session, "hr.employee:view")) return null;
+/** HR records that belong to one employee and can therefore be scoped to their owner. */
+export type HrOwnedResource = "attendance" | "leave" | "loan" | "payroll";
+
+/** Whose records the user may read: null for the whole company (hr.<resource>:view), otherwise only their own. */
+export async function allowedEmployeeIds(session: AppSession, resource: HrOwnedResource): Promise<string[] | null> {
+  if (can(session, `hr.${resource}:view`)) return null;
+  if (!can(session, "hr.self:view")) return [];
   const me = await myEmployee(session);
   return me ? [me.id] : [];
 }
-export async function scopeEmployee(session: AppSession, employeeId: string | null | undefined) {
-  const allowed = await allowedEmployeeIds(session);
-  if (allowed === null) { if (!employeeId) throw new Error("EMPLOYEE_REQUIRED"); return employeeId; }
-  if (allowed.length === 0) throw new Error("NO_EMPLOYEE_RECORD");
-  if (employeeId && employeeId !== allowed[0]) throw new Error("FORBIDDEN");
-  return allowed[0];
+/** Resolves the employee a write applies to. Acting for someone else needs hr.<resource>:create and an employee of the active company. */
+export async function scopeEmployee(session: AppSession, resource: HrOwnedResource, employeeId: string | null | undefined) {
+  if (can(session, `hr.${resource}:create`)) {
+    if (!employeeId) throw new Error("EMPLOYEE_REQUIRED");
+    const exists = await prisma.employee.count({ where: { id: employeeId, companyId: session.companyId } });
+    if (!exists) throw new Error("NOT_FOUND");
+    return employeeId;
+  }
+  if (!can(session, "hr.self:create")) throw new Error("FORBIDDEN");
+  const me = await myEmployee(session);
+  if (!me) throw new Error("NO_EMPLOYEE_RECORD");
+  if (employeeId && employeeId !== me.id) throw new Error("FORBIDDEN");
+  return me.id;
 }
 
 // ── Contracts ──

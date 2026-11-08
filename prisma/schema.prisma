@@ -9,7 +9,6 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 // ───────────────────────────── Foundation: tenancy ─────────────────────────────
@@ -24,6 +23,9 @@ model Company {
   addressAr     String?
   addressEn     String?
   city          String?
+  buildingNo    String?
+  district      String?
+  postalCode    String?
   country       String   @default("SA")
   phone         String?
   email         String?
@@ -212,6 +214,7 @@ model User {
   failedLogins    Int       @default(0)
   lockedUntil     DateTime?
   lastLoginAt     DateTime?
+  passwordChangedAt DateTime?
   defaultCompanyId String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -1772,8 +1775,45 @@ model PortalUser {
   name         String
   locale       String   @default("ar")
   isActive     Boolean  @default(true)
+  failedLogins Int      @default(0)
+  lockedUntil  DateTime?
   lastLoginAt  DateTime?
+  passwordChangedAt DateTime?
   createdAt    DateTime @default(now())
+}
+
+// ───────────────────────────── Platform: auth and background jobs ─────────────────────────────
+
+/// Single-use password reset links. Only the SHA-256 of the token is stored.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  realm     String    // STAFF | PORTAL
+  subjectId String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([realm, subjectId])
+}
+
+/// Fixed-window counters for login and password-reset throttling.
+model RateLimit {
+  key         String   @id
+  windowStart DateTime
+  count       Int
+
+  @@index([windowStart])
+}
+
+/// Last run of each background job, so restarts neither repeat nor lose a run.
+model ScheduledJob {
+  job        String    @id
+  lastRunAt  DateTime?
+  retryAfter DateTime?
+  lastStatus String?
+  lastError  String?
+  updatedAt  DateTime  @updatedAt
 }
 
 // ═════════════════════════════ Purchasing ═════════════════════════════
@@ -2342,6 +2382,8 @@ model AttendanceRecord {
   status      AttendanceStatus @default(PRESENT)
   checkIn     String?  // HH:mm
   checkOut    String?
+  punchInAt   DateTime? // exact time of a live punch; null for records HR entered
+  punchOutAt  DateTime?
   workedHrs   Decimal  @default(0) @db.Decimal(5, 2)
   lateMin     Int      @default(0)
   earlyMin    Int      @default(0)
@@ -2353,6 +2395,7 @@ model AttendanceRecord {
   updatedById String?
   @@unique([employeeId, day])
   @@index([companyId, day])
+  @@index([employeeId, punchInAt])
 }
 
 model EmployeeLoan {

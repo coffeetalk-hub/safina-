@@ -8,7 +8,8 @@ import {
   IdCard, CalendarCheck, TreePalm, HandCoins, Banknote, LogOut, SlidersHorizontal, CircleUserRound, FileText as FileText2,
 } from "lucide-react";
 
-export type NavItem = { key: string; href: string; icon: LucideIcon; permission?: string };
+/** `permission`: any one of the listed keys shows the item. */
+export type NavItem = { key: string; href: string; icon: LucideIcon; permission?: string | string[] };
 export type NavGroup = { key: string; items: NavItem[] };
 
 /** Sidebar structure. Modules 2–5 append their groups here. */
@@ -36,7 +37,7 @@ export const NAV: NavGroup[] = [
   {
     key: "purchasing",
     items: [
-      { key: "purchaseRequests", href: "/purchasing/requests", icon: ClipboardList, permission: "purchasing.request:view" },
+      { key: "purchaseRequests", href: "/purchasing/requests", icon: ClipboardList, permission: ["purchasing.request:view", "purchasing.myRequest:view"] },
       { key: "rfq", href: "/purchasing/rfq", icon: Scale, permission: "purchasing.rfq:view" },
       { key: "purchaseOrders", href: "/purchasing/orders", icon: PackageCheck, permission: "purchasing.order:view" },
       { key: "contracts", href: "/purchasing/contracts", icon: FileBadge, permission: "purchasing.contract:view" },
@@ -47,7 +48,7 @@ export const NAV: NavGroup[] = [
   {
     key: "hr",
     items: [
-      { key: "mySelfService", href: "/hr/self", icon: CircleUserRound, permission: "hr.leave:view" },
+      { key: "mySelfService", href: "/hr/self", icon: CircleUserRound, permission: "hr.self:view" },
       { key: "hrEmployees", href: "/hr/employees", icon: IdCard, permission: "hr.employee:view" },
       { key: "attendance", href: "/hr/attendance", icon: CalendarCheck, permission: "hr.attendance:view" },
       { key: "leave", href: "/hr/leave", icon: TreePalm, permission: "hr.leave:view" },

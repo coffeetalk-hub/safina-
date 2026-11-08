@@ -88,3 +88,25 @@ export function attendanceMetrics(checkIn: string | null, checkOut: string | nul
   const worked = Math.max(0, raw - (raw > breakHrs ? breakHrs : 0));
   return { lateMin: late > graceMinutes ? late : 0, earlyMin: early > graceMinutes ? early : 0, workedHrs: r2(worked), overtimeHrs: r2(Math.max(0, worked - dailyHours)) };
 }
+
+const RIYADH_OFFSET_MS = 3 * 60 * 60 * 1000;
+
+/** Wall-clock date and time in Riyadh (UTC+3, no daylight saving). `day` is midnight UTC of that date, as attendance stores it. */
+export function riyadhClock(now: Date) {
+  const iso = new Date(now.getTime() + RIYADH_OFFSET_MS).toISOString();
+  return { day: new Date(`${iso.slice(0, 10)}T00:00:00.000Z`), time: iso.slice(11, 16) };
+}
+
+/** Attendance figures for a completed punch. Uses real elapsed time when the shift crosses midnight. */
+export function punchMetrics(input: { checkIn: string; checkOut: string; elapsedMinutes: number; workStart: string; workEnd: string; graceMinutes: number; dailyHours: number; nonWorkingDay: boolean }) {
+  const { checkIn, checkOut, elapsedMinutes, workStart, workEnd, graceMinutes, dailyHours, nonWorkingDay } = input;
+  const metrics = attendanceMetrics(checkIn, checkOut, workStart, workEnd, graceMinutes, dailyHours);
+  const overnight = minutesBetween(checkIn, checkOut) < 0;
+  let { workedHrs } = metrics;
+  if (overnight) {
+    const breakHrs = Math.max(0, minutesBetween(workStart, workEnd) / 60 - dailyHours);
+    const raw = elapsedMinutes / 60;
+    workedHrs = r2(Math.max(0, raw - (raw > breakHrs ? breakHrs : 0)));
+  }
+  return { lateMin: nonWorkingDay ? 0 : metrics.lateMin, earlyMin: nonWorkingDay || overnight ? 0 : metrics.earlyMin, workedHrs, overtimeHrs: r2(Math.max(0, workedHrs - dailyHours)) };
+}

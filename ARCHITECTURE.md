@@ -89,7 +89,7 @@ Stack: Next.js App Router · TypeScript · Tailwind · shadcn/ui · PostgreSQL +
 | Lists | One generic `<DataTable>` with server-side search/filter/sort/pagination, column visibility (persisted per user), and "Export Excel" that reuses the same query. |
 | Cron jobs | Recurring journals, depreciation runs, expiry alerts (contracts, iqama/passport/etc.), email outbox — exposed as `/api/cron/*` with secret; schedulable by Vercel Cron / OS scheduler. |
 | ZATCA | Phase 2 readiness only: UUID, ICV counter, PIH (previous invoice hash chain), SHA-256 hash, TLV Base64 QR (Phase 1 tags 1–5 + Phase 2 tags 6–9), UBL 2.1 XML for standard (B2B) & simplified (B2C). `ZatcaClient` interface with `StubZatcaClient`; real onboarding/CSID/signing/clearance/reporting is **not** implemented. |
-| Security | Zod on every input, CSRF via server actions, rate-limit on login, security headers, no secrets in client, permission + tenant check in every service function. |
+| Security | Zod on every input, CSRF via server actions, Postgres-backed rate limits on login and password reset, account lockout, HSTS and CSP headers, no secrets in client, permission + tenant check in every service function, separate permissions for personal (`hr.self`, `purchasing.myRequest`) and company-wide access. |
 
 ## 3. Data model (ER overview)
 

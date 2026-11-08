@@ -1,12 +1,11 @@
 import { NextRequest } from "next/server";
-import { getSession, can } from "@/core/auth/session";
+import { getSession } from "@/core/auth/session";
 import { getAttachment } from "@/modules/foundation/attachments/service";
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const session = await getSession();
   if (!session) return new Response("Unauthorized", { status: 401 });
-  if (!can(session, "foundation.attachment:view")) return new Response("Forbidden", { status: 403 });
   try {
     const { meta, data } = await getAttachment(session, id);
     const inline = meta.mimeType.startsWith("image/") || meta.mimeType === "application/pdf";

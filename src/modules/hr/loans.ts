@@ -14,7 +14,7 @@ export const loanSchema = z.object({ id: z.string().nullable().optional(), emplo
 
 async function where(session: AppSession, p: ListParams) {
   const w: Record<string, unknown> = { companyId: session.companyId };
-  const allowed = await allowedEmployeeIds(session);
+  const allowed = await allowedEmployeeIds(session, "loan");
   if (allowed) w.employeeId = { in: allowed };
   if (p.filters.employeeId && !allowed) w.employeeId = p.filters.employeeId;
   if (p.filters.status) w.status = p.filters.status;
@@ -30,13 +30,13 @@ export async function allLoans(session: AppSession, p: ListParams) { return (awa
 export async function getLoan(session: AppSession, id: string) {
   const l = await prisma.employeeLoan.findFirst({ where: { id, companyId: session.companyId }, include: { schedule: { orderBy: { dueMonth: "asc" } } } });
   if (!l) return null;
-  const allowed = await allowedEmployeeIds(session);
+  const allowed = await allowedEmployeeIds(session, "loan");
   if (allowed && !allowed.includes(l.employeeId)) return null;
   const [e] = await withEmployee(session.companyId, [l]);
   return e;
 }
 export async function saveLoan(session: AppSession, input: z.infer<typeof loanSchema>) {
-  const employeeId = await scopeEmployee(session, input.employeeId);
+  const employeeId = await scopeEmployee(session, "loan", input.employeeId);
   const first = new Date(`${input.firstMonth.slice(0, 7)}-01`);
   const inst = round(D(input.amount).div(input.installments), 2);
   const schedule = Array.from({ length: input.installments }, (_, i) => { const d = new Date(first); d.setUTCMonth(d.getUTCMonth() + i); return { dueMonth: d, amount: i === input.installments - 1 ? round(D(input.amount).minus(inst.times(input.installments - 1)), 2) : inst }; });
@@ -56,7 +56,7 @@ export async function submitLoan(session: AppSession, id: string) {
   return prisma.$transaction(async (tx) => {
     const l = await tx.employeeLoan.findFirst({ where: { id, companyId: session.companyId } });
     if (!l || l.status !== "DRAFT") throw new Error("NOT_DRAFT");
-    await scopeEmployee(session, l.employeeId);
+    await scopeEmployee(session, "loan", l.employeeId);
     const req = await submitForApproval(tx, { companyId: session.companyId, docType: "LOAN", docId: l.id, docNumber: l.number, amount: l.amount, requestedById: session.userId, link: `/hr/loans/${l.id}` });
     await tx.employeeLoan.update({ where: { id }, data: { status: req ? "PENDING_APPROVAL" : "APPROVED", updatedById: session.userId } });
     return { status: req ? "PENDING_APPROVAL" : "APPROVED" };

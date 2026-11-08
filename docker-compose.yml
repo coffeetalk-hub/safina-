@@ -1,0 +1,20 @@
+# Local development database. Matches DATABASE_URL in .env.example.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: safina
+      POSTGRES_PASSWORD: safina
+      POSTGRES_DB: safina
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - safina-dev-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U safina -d safina"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  safina-dev-pgdata:

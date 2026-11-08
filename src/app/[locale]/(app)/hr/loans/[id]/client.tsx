@@ -24,7 +24,7 @@ import { formatDate } from "@/lib/dates";
 type Opt = { value: string; label: string };
 export type LoanDoc = { id: string; number: string; status: string; employeeId: string; employeeAr: string; employeeEn: string; loanDate: string; amount: number; installments: number; installmentAmount: number; firstMonth: string; reason: string | null; paidAmount: number; schedule: { id: string; dueMonth: string; amount: number; paidAt: string | null }[] };
 
-export function LoanEditor({ doc, employees, defaultEmployeeId, perms, journal }: { doc: LoanDoc | null; employees: Opt[]; defaultEmployeeId: string; perms: { create: boolean; edit: boolean; approve: boolean }; journal: { id: string; number: string } | null }) {
+export function LoanEditor({ doc, employees, defaultEmployeeId, perms, journal }: { doc: LoanDoc | null; employees: Opt[]; defaultEmployeeId: string; perms: { create: boolean; edit: boolean; approve: boolean; allEmployees: boolean }; journal: { id: string; number: string } | null }) {
   const t = useTranslations("hr"); const tf = useTranslations("fields"); const tc = useTranslations("common"); const te = useTranslations("errors"); const tfin = useTranslations("finance");
   const locale = useLocale(); const ar = locale === "ar"; const toast = useToast(); const router = useRouter();
   const editable = !doc || doc.status === "DRAFT";
@@ -41,7 +41,7 @@ export function LoanEditor({ doc, employees, defaultEmployeeId, perms, journal }
   };
   return (
     <>
-      <PageHeader title={doc ? `${t("loans.one")} ${doc.number}` : t("loans.new")} description={doc ? (ar ? doc.employeeAr : doc.employeeEn) : undefined} actions={<><Button variant="ghost" size="sm" asChild><Link href="/hr/loans"><ArrowLeft className="rtl:rotate-180" /> {tc("back")}</Link></Button>{doc && <DocStatus status={doc.status} />}</>} />
+      <PageHeader title={doc ? `${t("loans.one")} ${doc.number}` : t("loans.new")} description={doc ? (ar ? doc.employeeAr : doc.employeeEn) : undefined} actions={<><Button variant="ghost" size="sm" asChild><Link href={perms.allEmployees ? "/hr/loans" : "/hr/self"}><ArrowLeft className="rtl:rotate-180" /> {tc("back")}</Link></Button>{doc && <DocStatus status={doc.status} />}</>} />
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2"><CardContent className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1 sm:col-span-2"><Label>{t("employee")} *</Label><Combobox options={employees} value={f.employeeId} disabled={!editable || employees.length <= 1} onChange={(v) => setF({ ...f, employeeId: v ?? "" })} allowClear={false} /></div>

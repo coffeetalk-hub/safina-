@@ -10,15 +10,15 @@ import { Link } from "@/i18n/navigation";
 import { Plus } from "lucide-react";
 
 export default async function RequestsPage({ searchParams }: { searchParams: SP }) {
-  const { session, locale, params, t, tf, te, perms } = await purchasingPage("request", searchParams);
-  const [data, lk] = await Promise.all([listRequests(session, params), financeLookups(session.companyId, locale)]);
+  const { session, locale, params, t, tf, te, perms, ownOnly } = await purchasingPage("request", searchParams, { ownResource: "myRequest" });
+  const [data, lk] = await Promise.all([listRequests(session, params), ownOnly ? null : financeLookups(session.companyId, locale)]);
   return (
     <>
       <PageHeader title={t("requests.title")} description={t("requests.hint")} actions={perms.create && <Button asChild><Link href="/purchasing/requests/new"><Plus /> {t("requests.new")}</Link></Button>} />
       <DataTable tableKey="purchase-requests" columns={requestColumns(tf, t)} data={plain(data)} exportResource="purchase-requests" rowHrefTemplate="/purchasing/requests/{id}" filters={[
         { key: "status", label: tf("status"), type: "select", options: enumOptions(te, "PrStatus", ["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED", "RFQ", "ORDERED", "CANCELLED"]) },
         { key: "priority", label: t("priority"), type: "select", options: enumOptions(te, "Priority", ["LOW", "NORMAL", "HIGH", "URGENT"]) },
-        { key: "requesterId", label: t("requester"), type: "select", options: lk.employees },
+        ...(lk ? [{ key: "requesterId", label: t("requester"), type: "select" as const, options: lk.employees }] : []),
         { key: "from", label: tf("from"), type: "date" }, { key: "to", label: tf("to"), type: "date" },
       ]} />
     </>

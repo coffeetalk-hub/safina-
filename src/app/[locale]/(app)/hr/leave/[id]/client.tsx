@@ -45,7 +45,7 @@ export function LeaveEditor({ doc, employees, types, defaultEmployeeId, balances
   const onEmployee = (v: string | null) => { setF({ ...f, employeeId: v ?? "" }); if (!doc && v) router.replace(`/${locale}/hr/leave/new?employeeId=${v}`); };
   return (
     <>
-      <PageHeader title={doc ? `${t("leave.one")} ${doc.number}` : t("leave.new")} description={doc ? (ar ? doc.employeeAr : doc.employeeEn) : undefined} actions={<><Button variant="ghost" size="sm" asChild><Link href="/hr/leave"><ArrowLeft className="rtl:rotate-180" /> {tc("back")}</Link></Button>{doc && <DocStatus status={doc.status} />}</>} />
+      <PageHeader title={doc ? `${t("leave.one")} ${doc.number}` : t("leave.new")} description={doc ? (ar ? doc.employeeAr : doc.employeeEn) : undefined} actions={<><Button variant="ghost" size="sm" asChild><Link href={perms.allEmployees ? "/hr/leave" : "/hr/self"}><ArrowLeft className="rtl:rotate-180" /> {tc("back")}</Link></Button>{doc && <DocStatus status={doc.status} />}</>} />
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2"><CardContent className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1 sm:col-span-2"><Label>{t("employee")} *</Label><Combobox options={employees} value={f.employeeId} disabled={!editable || employees.length <= 1} onChange={onEmployee} allowClear={false} /></div>
@@ -68,7 +68,7 @@ export function LeaveEditor({ doc, employees, types, defaultEmployeeId, balances
         {doc && perms.approve && ["DRAFT", "PENDING_APPROVAL"].includes(doc.status) && <ConfirmButton title={tc("approve")} action={() => decideLeaveAction({ id: doc.id, decision: "APPROVED" })} variant="default"><Check /> {tc("approve")}</ConfirmButton>}
         {doc && perms.approve && ["DRAFT", "PENDING_APPROVAL"].includes(doc.status) && <ConfirmButton title={tc("reject")} action={() => decideLeaveAction({ id: doc.id, decision: "REJECTED" })} variant="outline"><X /> {tc("reject")}</ConfirmButton>}
         {doc && ["DRAFT", "PENDING_APPROVAL", "APPROVED"].includes(doc.status) && <ConfirmButton title={t("leave.cancelConfirm")} action={() => cancelLeaveAction(doc.id)} variant="ghost"><Ban /> {tc("cancel")}</ConfirmButton>}
-        {doc && doc.status === "DRAFT" && perms.delete && <ConfirmButton title={tc("deleteConfirmTitle")} action={() => deleteLeaveAction(doc.id)} onSuccess={() => router.push(`/${locale}/hr/leave`)}><Trash2 /> {tc("delete")}</ConfirmButton>}
+        {doc && doc.status === "DRAFT" && perms.delete && <ConfirmButton title={tc("deleteConfirmTitle")} action={() => deleteLeaveAction(doc.id)} onSuccess={() => router.push(`/${locale}${perms.allEmployees ? "/hr/leave" : "/hr/self"}`)}><Trash2 /> {tc("delete")}</ConfirmButton>}
       </div>
     </>
   );

@@ -38,7 +38,7 @@ registerWidget({
 });
 registerWidget({
   key: "myLeaveBalance",
-  permission: "hr.leave:view",
+  permission: "hr.self:view",
   load: async (s, locale) => {
     const me = await myEmployee(s);
     if (!me) return { kind: "stat", value: "—", href: "/hr/self" };

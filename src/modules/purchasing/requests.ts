@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import type { AppSession } from "@/core/auth/session";
+import { can, type AppSession } from "@/core/auth/session";
 import { orderByFrom, skipTake, type ColumnDef, type ListParams, type PagedResult } from "@/components/data-table/types";
 import { nextDocumentNumber } from "@/core/numbering";
 import { submitForApproval } from "@/core/approvals/engine";
@@ -22,8 +22,25 @@ export const requestSchema = z.object({
 });
 export type RequestInput = z.infer<typeof requestSchema>;
 
-function where(session: AppSession, p: ListParams) {
+async function myEmployeeId(session: AppSession) {
+  const me = await prisma.employee.findFirst({ where: { companyId: session.companyId, userId: session.userId }, select: { id: true } });
+  return me?.id ?? null;
+}
+/** Rows the user raised: created by them, or naming their employee record as requester. */
+async function ownedBy(session: AppSession) {
+  const me = await myEmployeeId(session);
+  return { OR: [{ createdById: session.userId }, ...(me ? [{ requesterId: me }] : [])] };
+}
+/** Throws unless the user holds the company-wide permission or raised this request themselves. */
+async function assertMayChange(session: AppSession, action: "edit" | "delete", r: { createdById: string | null; requesterId: string | null }) {
+  if (can(session, `purchasing.request:${action}`)) return;
+  const me = await myEmployeeId(session);
+  if (r.createdById !== session.userId && (!me || r.requesterId !== me)) throw new Error("FORBIDDEN");
+}
+
+async function where(session: AppSession, p: ListParams) {
   const w: Record<string, unknown> = { companyId: session.companyId };
+  if (!can(session, "purchasing.request:view")) w.AND = [await ownedBy(session)];
   if (p.q) w.OR = [{ number: { contains: p.q, mode: "insensitive" } }, { purpose: { contains: p.q, mode: "insensitive" } }];
   if (p.filters.status) w.status = p.filters.status;
   if (p.filters.priority) w.priority = p.filters.priority;
@@ -37,22 +54,28 @@ async function withRequester<T extends { requesterId: string | null }>(session: 
   return rows.map((r) => { const e = emps.find((x) => x.id === r.requesterId); return { ...r, requesterAr: e ? `${e.firstNameAr} ${e.lastNameAr}` : "", requesterEn: e ? `${e.firstNameEn} ${e.lastNameEn}` : "" }; });
 }
 export async function listRequests(session: AppSession, p: ListParams): Promise<PagedResult<Record<string, unknown>>> {
-  const w = where(session, p);
+  const w = await where(session, p);
   const [rows, total] = await Promise.all([prisma.purchaseRequest.findMany({ where: w, orderBy: orderByFrom(p.sort, ["number", "requestDate", "neededBy", "status", "priority", "estimatedTotal"], { requestDate: "desc" }), ...skipTake(p) }), prisma.purchaseRequest.count({ where: w })]);
   return { rows: await withRequester(session, rows), total, page: p.page, pageSize: p.pageSize };
 }
-export async function allRequests(session: AppSession, p: ListParams) { return withRequester(session, await prisma.purchaseRequest.findMany({ where: where(session, p), orderBy: { requestDate: "desc" }, take: 10_000 })); }
+export async function allRequests(session: AppSession, p: ListParams) { return withRequester(session, await prisma.purchaseRequest.findMany({ where: await where(session, p), orderBy: { requestDate: "desc" }, take: 10_000 })); }
 export async function getRequest(session: AppSession, id: string) {
-  return prisma.purchaseRequest.findFirst({ where: { id, companyId: session.companyId }, include: { lines: { orderBy: { lineNo: "asc" } }, rfqs: { select: { id: true, number: true, status: true } }, purchaseOrders: { select: { id: true, number: true, status: true, total: true } } } });
+  const companyWide = can(session, "purchasing.request:view");
+  const r = await prisma.purchaseRequest.findFirst({ where: { id, companyId: session.companyId, ...(companyWide ? {} : await ownedBy(session)) }, include: { lines: { orderBy: { lineNo: "asc" } }, rfqs: { select: { id: true, number: true, status: true } }, purchaseOrders: { select: { id: true, number: true, status: true, total: true } } } });
+  // RFQs and purchase orders are purchasing's business: the requester only sees the request itself.
+  return r && !companyWide ? { ...r, rfqs: [], purchaseOrders: [] } : r;
 }
 export async function saveRequest(session: AppSession, input: RequestInput) {
   const estimated = input.lines.reduce((a, l) => a.plus(D(l.quantity).times(l.estimatedPrice)), D(0));
-  const data = { requestDate: new Date(input.requestDate), neededBy: input.neededBy ? new Date(input.neededBy) : null, requesterId: input.requesterId || null, costCenterId: input.costCenterId || null, branchId: input.branchId || null, purpose: input.purpose ?? null, priority: input.priority, notes: input.notes ?? null, estimatedTotal: estimated };
+  // Only purchasing staff may raise a request on someone else's behalf.
+  const requesterId = can(session, `purchasing.request:${input.id ? "edit" : "create"}`) ? input.requesterId || null : await myEmployeeId(session);
+  const data = { requestDate: new Date(input.requestDate), neededBy: input.neededBy ? new Date(input.neededBy) : null, requesterId, costCenterId: input.costCenterId || null, branchId: input.branchId || null, purpose: input.purpose ?? null, priority: input.priority, notes: input.notes ?? null, estimatedTotal: estimated };
   const lines = input.lines.map((l, i) => ({ lineNo: i + 1, itemId: l.itemId || null, descriptionAr: l.descriptionAr, descriptionEn: l.descriptionEn, quantity: l.quantity, unit: l.unit, estimatedPrice: l.estimatedPrice, expenseAccountId: l.expenseAccountId || null, costCenterId: l.costCenterId || null }));
   return prisma.$transaction(async (tx) => {
     if (input.id) {
       const ex = await tx.purchaseRequest.findFirst({ where: { id: input.id, companyId: session.companyId } });
       if (!ex) throw new Error("NOT_FOUND");
+      await assertMayChange(session, "edit", ex);
       if (ex.status !== "DRAFT" && ex.status !== "REJECTED") throw new Error("NOT_DRAFT");
       await tx.purchaseRequestLine.deleteMany({ where: { requestId: input.id } });
       return tx.purchaseRequest.update({ where: { id: input.id }, data: { ...data, status: "DRAFT", updatedById: session.userId, lines: { create: lines } } });
@@ -66,6 +89,7 @@ export async function submitRequest(session: AppSession, id: string) {
   return prisma.$transaction(async (tx) => {
     const r = await tx.purchaseRequest.findFirst({ where: { id, companyId: session.companyId } });
     if (!r) throw new Error("NOT_FOUND");
+    await assertMayChange(session, "edit", r);
     if (r.status !== "DRAFT" && r.status !== "REJECTED") throw new Error("NOT_DRAFT");
     const req = await submitForApproval(tx, { companyId: session.companyId, docType: "PURCHASE_REQUEST", docId: r.id, docNumber: r.number, amount: r.estimatedTotal, requestedById: session.userId, link: `/purchasing/requests/${r.id}` });
     await tx.purchaseRequest.update({ where: { id }, data: { status: req ? "PENDING_APPROVAL" : "APPROVED", updatedById: session.userId } });
@@ -75,8 +99,15 @@ export async function submitRequest(session: AppSession, id: string) {
 export async function cancelRequest(session: AppSession, id: string) {
   const r = await prisma.purchaseRequest.findFirst({ where: { id, companyId: session.companyId } });
   if (!r || !["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED"].includes(r.status)) throw new Error("INVALID_TRANSITION");
+  await assertMayChange(session, "edit", r);
   await prisma.approvalRequest.updateMany({ where: { docType: "PURCHASE_REQUEST", docId: id, status: "PENDING" }, data: { status: "CANCELLED" } });
   return prisma.purchaseRequest.update({ where: { id }, data: { status: "CANCELLED", updatedById: session.userId } });
+}
+export async function deleteRequest(session: AppSession, id: string) {
+  const r = await prisma.purchaseRequest.findFirst({ where: { id, companyId: session.companyId } });
+  if (!r || r.status !== "DRAFT") throw new Error("NOT_DRAFT");
+  await assertMayChange(session, "delete", r);
+  return prisma.purchaseRequest.delete({ where: { id } });
 }
 export function requestColumns(tf: (k: string) => string, t: (k: string) => string): ColumnDef[] {
   return [

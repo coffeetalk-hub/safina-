@@ -10,7 +10,7 @@ export function Sidebar({ permissions, extraGroups = [], onNavigate }: { permiss
   const t = useTranslations("nav");
   const pathname = usePathname();
   const all = permissions.includes("*");
-  const canSee = (p?: string) => !p || all || permissions.includes(p);
+  const canSee = (p?: string | string[]) => !p || all || [p].flat().some((x) => permissions.includes(x));
   const groups = [...NAV, ...extraGroups];
 
   return (

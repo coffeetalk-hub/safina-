@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: safina
+          POSTGRES_PASSWORD: safina
+          POSTGRES_DB: safina
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U safina -d safina"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://safina:safina@localhost:5432/safina
+      AUTH_SECRET: ci-only-auth-secret-not-used-anywhere-else
+      AUTH_URL: http://localhost:3000
+      CRON_SECRET: ci-only-cron-secret
+      STORAGE_DIR: ./storage
+      DISABLE_SCHEDULER: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npx prisma migrate deploy
+      - run: npm run db:seed
+      - run: npm run build
+      - name: End-to-end access checks
+        env:
+          E2E_BASE_URL: http://localhost:3000
+        run: |
+          npm start &
+          for i in $(seq 1 30); do curl -sf http://localhost:3000/api/health && break; sleep 2; done
+          npm run test:e2e
+      - name: Docker image builds
+        run: docker build -t safina-erp .

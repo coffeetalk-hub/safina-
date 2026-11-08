@@ -8,7 +8,7 @@ import { submitForApproval } from "@/core/approvals/engine";
 import { registerApprovalHooks, DOC_LINKS } from "@/modules/foundation/approvals/hooks";
 import { D, round, ZERO } from "@/lib/money";
 import { computeDocument, docHeaderSchema, docWhere, OPEN_STATUSES } from "../_shared/docs";
-import { buildUblXml, invoiceHash, buildPhase2Qr, getZatcaClient, newUuid, GENESIS_HASH, type ZatcaInvoice } from "@/core/zatca";
+import { buildUblXml, invoiceHash, buildPhase1Qr, buildPhase2Qr, getZatcaClient, newUuid, GENESIS_HASH, type ZatcaInvoice } from "@/core/zatca";
 
 export const invoiceSchema = docHeaderSchema.extend({
   customerId: z.string().min(1),
@@ -155,6 +155,7 @@ export async function postInvoiceTx(tx: Tx, userId: string, id: string) {
 export async function generateZatca(tx: Tx, invoiceId: string) {
   const inv = await tx.customerInvoice.findFirstOrThrow({ where: { id: invoiceId }, include: { lines: { include: { taxCode: true, item: true } }, customer: true } });
   const company = await tx.company.findUniqueOrThrow({ where: { id: inv.companyId } });
+  if (!company.vatNumber) throw new Error("COMPANY_VAT_REQUIRED");
   const last = await tx.zatcaDocument.findFirst({ where: { companyId: inv.companyId }, orderBy: { icv: "desc" } });
   const icv = (last?.icv ?? 0) + 1;
   const previousHash = last?.invoiceHash ?? GENESIS_HASH;
@@ -172,7 +173,7 @@ export async function generateZatca(tx: Tx, invoiceId: string) {
     currency: inv.currencyCode,
     icv,
     previousHash,
-    seller: { nameAr: company.nameAr, nameEn: company.nameEn, vatNumber: company.vatNumber ?? "300000000000003", crNumber: company.crNumber, street: company.addressEn, city: company.city, country: company.country },
+    seller: { nameAr: company.nameAr, nameEn: company.nameEn, vatNumber: company.vatNumber, crNumber: company.crNumber, street: company.addressEn, buildingNo: company.buildingNo, district: company.district, city: company.city, postalCode: company.postalCode, country: company.country },
     buyer: inv.type === "STANDARD" ? { name: inv.customer.nameEn, vatNumber: inv.customer.vatNumber, crNumber: inv.customer.crNumber, street: inv.customer.addressEn, buildingNo: inv.customer.buildingNo, district: inv.customer.district, city: inv.customer.city, postalCode: inv.customer.postalCode, country: inv.customer.country } : null,
     lines: inv.lines.map((l) => ({ id: l.lineNo, name: l.descriptionAr, quantity: Number(l.quantity), unit: l.item?.unit, unitPrice: Number(l.unitPrice), net: Number(l.net), discount: Number(l.discountAmount), taxRate: Number(l.taxRate), taxAmount: Number(l.tax), total: Number(l.total), taxCategory: cat(l.taxCode?.category) })),
     subtotal: Number(inv.subtotal) - Number(inv.discountTotal) + 0,
@@ -184,7 +185,8 @@ export async function generateZatca(tx: Tx, invoiceId: string) {
   const hash = invoiceHash(xml);
   const client = getZatcaClient();
   const signing = await client.sign(xml, hash);
-  const qr = buildPhase2Qr(z, hash, signing);
+  // Without a real signing key, print the Phase 1 QR rather than placeholder signature data.
+  const qr = client.mode === "STUB" ? buildPhase1Qr(z) : buildPhase2Qr(z, hash, signing);
   await tx.zatcaDocument.upsert({
     where: { invoiceId },
     create: { invoiceId, companyId: inv.companyId, uuid: z.uuid, icv, previousHash, invoiceHash: hash, qrBase64: qr, xml: signing.signedXml },

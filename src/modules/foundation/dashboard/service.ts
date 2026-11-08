@@ -20,7 +20,9 @@ export async function loadDashboard(session: AppSession, locale: string): Promis
     if (!w) continue;
     if (w.permission && !can(session, w.permission)) continue;
     try {
-      out.push({ key, size: w.size ?? 1, data: await w.load(session, locale) });
+      const data = await w.load(session, locale);
+      if (data.kind === "links" && data.items.length === 0) continue;
+      out.push({ key, size: w.size ?? 1, data });
     } catch (e) {
       console.error("widget failed", key, e);
     }

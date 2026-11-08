@@ -6,7 +6,8 @@ import type { AppSession } from "@/core/auth/session";
  * reuses the same query as the screen (without pagination).
  */
 export type Exporter = {
-  permission: string;
+  /** Any one of these grants the export; the loader still applies row-level scope. */
+  permission: string | readonly string[];
   columns: (locale: string) => Promise<ColumnDef[]> | ColumnDef[];
   load: (session: AppSession, params: ListParams, locale: string) => Promise<Record<string, unknown>[]>;
   sheetName: (locale: string) => string;

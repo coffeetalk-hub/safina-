@@ -220,6 +220,17 @@ export function getZatcaClient(): ZatcaClient {
   return new StubZatcaClient();
 }
 
+/** Phase-1 QR: tags 1–5 only (seller, VAT number, timestamp, total, VAT). */
+export function buildPhase1Qr(inv: Pick<ZatcaInvoice, "seller" | "issueDate" | "total" | "taxTotal">) {
+  return buildQrTlv([
+    { tag: 1, value: inv.seller.nameAr },
+    { tag: 2, value: inv.seller.vatNumber },
+    { tag: 3, value: inv.issueDate.toISOString().replace(/\.\d{3}Z$/, "Z") },
+    { tag: 4, value: fmt(inv.total) },
+    { tag: 5, value: fmt(inv.taxTotal) },
+  ]);
+}
+
 /** Full Phase-2 QR: tags 1–5 (Phase 1) + 6 hash, 7 signature, 8 public key, 9 cert signature (standard omits 9 is allowed but we include). */
 export function buildPhase2Qr(inv: Pick<ZatcaInvoice, "seller" | "issueDate" | "total" | "taxTotal">, hash: string, signing: SigningResult) {
   return buildQrTlv([

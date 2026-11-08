@@ -211,8 +211,8 @@ export async function getWps(session: AppSession, runId: string) { return prisma
 export async function getPayslip(session: AppSession, id: string) {
   const p = await prisma.payslip.findFirst({ where: { id, companyId: session.companyId }, include: { lines: { orderBy: { sortOrder: "asc" } }, run: true } });
   if (!p) return null;
-  const allowed = await allowedEmployeeIds(session);
-  if (allowed && !allowed.includes(p.employeeId)) return null;
+  const allowed = await allowedEmployeeIds(session, "payroll");
+  if (allowed && (!allowed.includes(p.employeeId) || !["POSTED", "PAID"].includes(p.run.status))) return null;
   const e = await prisma.employee.findUniqueOrThrow({ where: { id: p.employeeId } });
   return { ...p, employee: e };
 }

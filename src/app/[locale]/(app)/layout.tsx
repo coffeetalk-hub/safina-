@@ -3,6 +3,8 @@ import { requireSession } from "@/core/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Header } from "@/components/shell/header";
 import { Sidebar } from "@/components/shell/sidebar";
+import { PunchProvider } from "@/components/punch/punch-context";
+import { punchState } from "@/modules/hr/punch";
 import { Link } from "@/i18n/navigation";
 import "@/modules/finance/register";
 
@@ -10,14 +12,16 @@ export default async function AppLayout({ children, params }: { children: React.
   const { locale } = await params;
   setRequestLocale(locale);
   const session = await requireSession();
-  const [companies, unread] = await Promise.all([
+  const [companies, unread, punch] = await Promise.all([
     prisma.company.findMany({ where: { id: { in: session.companyIds }, isActive: true }, select: { id: true, nameAr: true, nameEn: true }, orderBy: { code: "asc" } }),
     prisma.notification.count({ where: { userId: session.userId, isRead: false } }),
+    punchState(session),
   ]);
   const permissions = Array.from(session.permissions);
 
   return (
-    <div className="flex min-h-screen overflow-x-hidden">
+    <PunchProvider initial={punch}>
+    <div className="flex min-h-screen overflow-x-clip">
       <aside className="hidden lg:flex w-64 shrink-0 flex-col border-e bg-sidebar text-sidebar-foreground no-print">
         <div className="flex h-14 items-center border-b px-4 font-bold">
           <Link href="/dashboard">⛵ Safina ERP</Link>
@@ -37,5 +41,6 @@ export default async function AppLayout({ children, params }: { children: React.
         <main className="flex-1 min-w-0 overflow-x-hidden p-4 md:p-6">{children}</main>
       </div>
     </div>
+    </PunchProvider>
   );
 }

@@ -23,6 +23,10 @@ export default async function LoginPage({ params }: { params: Promise<{ locale: 
             <p className="text-sm text-muted-foreground">{t("signInHint")}</p>
           </div>
           <LoginForm />
+          <div className="flex items-center justify-between text-sm">
+            <Link href="/forgot-password" className="text-primary underline">{t("forgotPassword")}</Link>
+            <Link href="/portal/login" className="text-muted-foreground underline">{t("customerPortal")}</Link>
+          </div>
           <div className="text-center text-sm text-muted-foreground">
             <Link href="/login" locale={locale === "ar" ? "en" : "ar"} className="underline">
               {locale === "ar" ? "English" : "العربية"}
