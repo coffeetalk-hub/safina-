@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Safina ERP (سفينة) — The Sailors
 
-## Getting Started
+Bilingual (Arabic-first, RTL) web ERP for Saudi SMEs. Next.js 16 · TypeScript · Tailwind · shadcn/ui · Prisma/PostgreSQL · NextAuth · next-intl.
 
-First, run the development server:
+See `ARCHITECTURE.md` for the design and `PROGRESS.md` for status.
 
-```bash
+## First run (Windows / PowerShell, Node 24)
+
+```powershell
+# 1. Install
+npm install
+
+# 2. Environment
+Copy-Item .env.example .env
+# edit .env: DATABASE_URL + DIRECT_URL = your Supabase/Postgres SESSION pooler URL (IPv4), AUTH_SECRET = any long random string
+
+# 3. Database
+npm run db:migrate        # applies prisma/migrations
+npm run db:seed           # demo data (2 companies, COA, customers, vendors, employees, users)
+
+# 4. Run
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# open http://localhost:3000  → redirects to /ar/login
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Generate a secret: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Demo logins (password for all: `Safina@2026`)
+| Email | Role |
+|---|---|
+| admin@thesailors.ai | Super admin (both companies) |
+| finance@thesailors.ai | Finance manager + accountant |
+| sales@thesailors.ai | Sales |
+| purchasing@thesailors.ai | Purchasing |
+| hr@thesailors.ai | HR |
+| employee@thesailors.ai | Employee (self-service) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Customer portal (`/ar/portal`): `portal@nakheel.example` / `Portal@2026`
 
-## Learn More
+## Scripts
+| Command | Purpose |
+|---|---|
+| `npm run dev` / `build` / `start` | Next.js |
+| `npm run lint` · `npm run typecheck` · `npm test` | Quality gates |
+| `npm run db:migrate` | Apply migrations (production-safe) |
+| `npm run db:migrate:dev` | Create a new migration after editing `prisma/schema.prisma` |
+| `npm run db:seed` | Idempotent demo seed |
+| `npm run db:studio` | Prisma Studio |
 
-To learn more about Next.js, take a look at the following resources:
+## Scheduled jobs
+Call with the secret from `.env` (Windows Task Scheduler, cron, or Vercel Cron):
+- `GET /api/cron/email?secret=…` — sends queued notification emails via SMTP (every 5 min)
+- `GET /api/cron/recurring-journals?secret=…` — generates due recurring journal entries (daily)
+- `GET /api/cron/depreciation?secret=…` — posts last month's depreciation for all companies (monthly, e.g. 1st at 02:00)
+- `GET /api/cron/document-alerts?secret=…` — employee document expiry alerts (daily)
+- `GET /api/cron/expiry-alerts?secret=…` — marks expired vendor contracts and notifies purchasing users inside the alert window (daily)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## File storage
+Attachments and logos are stored under `STORAGE_DIR` (default `./storage`). Swap `src/core/attachments/storage.ts` for S3-compatible storage when hosting on Vercel.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Finance notes
+- Posting rules live in `src/core/posting`; documents never write journal lines directly.
+- Control-account mappings: Chart of accounts → **Mappings** tab (seeded for the demo companies).
+- ZATCA: `src/core/zatca` builds UUID/ICV/PIH/hash/QR/UBL XML; transport is a stub until EGS credentials are configured.
 
-## Deploy on Vercel
+## Purchasing notes
+- Flow: purchase request → (approval) → RFQ with vendor comparison → award → purchase order → (approval if policy) → vendor bill in Finance. No goods receipt or stock — services/non-stock items only.
+- Approval policy `PURCHASE_ORDER` in the seed: orders above 10,000 SAR go to Finance manager then Admin.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## HR & payroll notes
+- Labour-law parameters live in **HR → Settings** (work schedule, leave rules, GOSI rate table, pay components). Seeded values follow published rules; verify with HR/legal.
+- Monthly cycle: Attendance → Fill month → Payroll → New run → Calculate → Submit → Post to GL → Record payment → Generate WPS file.
+- Employee self-service is at `/hr/self` for users linked to an employee (Employees → User account); the demo `employee@thesailors.ai` is linked to EMP-0015.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Fonts
+`public/fonts/IBMPlexSansArabic-*.ttf` (SIL OFL) are used both in the UI (Arabic) and in PDFs.
