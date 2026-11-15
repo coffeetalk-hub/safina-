@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { AttachmentsPanel, type AttachmentItem } from "@/components/attachments/attachments-panel";
+import { usePendingAttachments } from "@/components/attachments/pending";
 import { DocStatus } from "@/components/finance/doc-toolbar";
 import { PageHeader } from "@/components/shell/page-header";
 import type { FinanceLookups } from "@/modules/finance/_shared/lookups";
@@ -59,12 +60,20 @@ export function RfqEditor({ doc, comparison, lookups, can, canAward, attachments
   const upd = (i: number, patch: Partial<Line>) => setLines((p) => p.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   const onItem = (i: number, id: string | null) => { const m = items.find((x) => x.value === id)?.meta ?? {}; upd(i, { itemId: id, descriptionAr: String(m.nameAr ?? lines[i].descriptionAr), descriptionEn: String(m.nameEn ?? lines[i].descriptionEn), unit: String(m.unit ?? lines[i].unit) }); };
   const fail = (err: string) => toast.error(te.has(err) ? te(err) : err);
+  const pending = usePendingAttachments();
+  const ta = useTranslations("foundation.attachments");
+  const attachEntity = "Rfq";
+  const flushPending = async (id: string) => {
+    if (!pending.files.length) return;
+    const f = await pending.flush(attachEntity, id);
+    if (f.failed.length) toast.error(ta("pendingFailed", { files: f.failed.join(", ") }));
+  };
 
   const save = async () => {
     setBusy("save");
     const res = await saveRfqAction({ id: doc?.id ?? null, ...head, requestId: doc?.requestId ?? null, branchId: head.branchId || null, notes: head.notes || null, vendorIds, lines: lines.filter((l) => l.descriptionAr || l.descriptionEn).map((l) => ({ ...l, descriptionAr: l.descriptionAr || l.descriptionEn, descriptionEn: l.descriptionEn || l.descriptionAr, quantity: Number(l.quantity || 0) })) });
     setBusy(null);
-    if (res.ok) { toast.success(tc("saved")); const d = res.data as { id: string }; if (!doc) router.replace(`/${locale}/purchasing/rfq/${d.id}`); else router.refresh(); }
+    if (res.ok) { toast.success(tc("saved")); const d = res.data as { id: string }; if (!doc) { await flushPending(d.id); router.replace(`/${locale}/purchasing/rfq/${d.id}`); } else router.refresh(); }
     else fail(res.fieldErrors ? Object.entries(res.fieldErrors).map(([k, v]) => `${k}: ${v[0]}`).join("; ") : res.error);
   };
   const openQuote = (q: Quote) => setQuote({ vendorId: q.vendorId, quoteRef: q.quoteRef ?? "", quoteDate: q.quoteDate?.slice(0, 10) ?? today, validUntil: q.validUntil?.slice(0, 10) ?? "", leadDays: q.leadDays?.toString() ?? "", paymentTerms: q.paymentTerms ?? "", currencyCode: q.currencyCode, notes: q.notes ?? "", prices: Object.fromEntries((doc?.lines ?? []).map((l) => [l.id, String(q.lines.find((x) => x.rfqLineId === l.id)?.unitPrice ?? "")])) });
@@ -190,7 +199,7 @@ export function RfqEditor({ doc, comparison, lookups, can, canAward, attachments
             </CardContent>
           </Card>
         )}
-        {doc && <AttachmentsPanel entityType="Rfq" entityId={doc.id} items={attachments} canUpload={canAttach.upload} canDelete={canAttach.delete} />}
+        {(doc || canAttach.upload) && <AttachmentsPanel entityType="Rfq" entityId={doc?.id ?? null} items={doc ? attachments : []} canUpload={canAttach.upload} canDelete={canAttach.delete} pending={pending} />}
       </div>
 
       <Dialog open={!!quote} onOpenChange={(o) => !o && setQuote(null)}>

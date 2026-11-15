@@ -5,8 +5,7 @@ import { getAsset, schedule } from "@/modules/finance/assets/service";
 import { PageHeader } from "@/components/shell/page-header";
 import { plain } from "@/components/data-table/types";
 import { AssetDetail } from "./client";
-import { listForEntity } from "@/modules/foundation/attachments/service";
-import { can } from "@/core/auth/session";
+import { attachmentRights, listForEntity } from "@/modules/foundation/attachments/service";
 
 export default async function AssetPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -17,7 +16,7 @@ export default async function AssetPage({ params }: { params: Promise<{ id: stri
   return (
     <>
       <PageHeader title={`${asset.number} · ${locale === "ar" ? asset.nameAr : asset.nameEn}`} description={locale === "ar" ? asset.category.nameAr : asset.category.nameEn} />
-      <AssetDetail asset={plain(asset)} schedule={schedule(asset)} lookups={lk} can={perms} attachments={plain(attachments)} canAttach={{ upload: can(session, "foundation.attachment:create"), delete: can(session, "foundation.attachment:delete") }} labels={{ title: t("assets.title") }} />
+      <AssetDetail asset={plain(asset)} schedule={schedule(asset)} lookups={lk} can={perms} attachments={plain(attachments)} canAttach={attachmentRights(session, "FixedAsset")} labels={{ title: t("assets.title") }} />
     </>
   );
 }

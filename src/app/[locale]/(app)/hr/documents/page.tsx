@@ -29,7 +29,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: SP
           { name: "issueDate", label: t("issueDate"), type: "date" }, { name: "expiryDate", label: t("expiryDate"), type: "date" },
           { name: "alertDays", label: t("alertDays"), type: "number", description: t("documents.alertHint") }, { name: "notes", label: tf("notes"), type: "textarea" },
         ]}
-        saveAction={saveDocumentAction} removeAction={removeDocumentAction} can={perms} />
+        saveAction={saveDocumentAction} removeAction={removeDocumentAction} can={perms} attach={{ entityType: "EmployeeDocument", canUpload: perms.create || perms.edit, canDelete: perms.edit || perms.delete }} />
     </>
   );
 }

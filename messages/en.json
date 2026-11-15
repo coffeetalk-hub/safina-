@@ -50,7 +50,11 @@
     "notes": "Notes",
     "optional": "optional",
     "attachments": "Attachments",
-    "history": "History"
+    "history": "History",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System"
   },
   "auth": {
     "signIn": "Sign in",
@@ -744,7 +748,9 @@
       "title": "Attachments",
       "upload": "Upload file",
       "dropHint": "PDF, images, Excel or Word up to 15 MB",
-      "noFiles": "No attachments yet"
+      "noFiles": "No attachments yet",
+      "pending": "Uploads when you save",
+      "pendingFailed": "Some files were not uploaded: {files}"
     },
     "notifications": {
       "title": "Notifications",

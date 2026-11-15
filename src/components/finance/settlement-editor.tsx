@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { AttachmentsPanel, type AttachmentItem } from "@/components/attachments/attachments-panel";
+import { usePendingAttachments } from "@/components/attachments/pending";
 import { DocStatus, PdfButtons, JournalLink } from "@/components/finance/doc-toolbar";
 import { PageHeader } from "@/components/shell/page-header";
 import type { FinanceLookups } from "@/modules/finance/_shared/lookups";
@@ -47,6 +48,14 @@ export function SettlementEditor({ mode, doc, lookups, can, actions, attachments
   const allocated = Object.values(alloc).reduce<number>((a, v) => a + Number(v || 0), 0);
   const amount = Number(head.amount || 0);
   const fail = (err: string) => toast.error(te.has(err) ? te(err) : err);
+  const pending = usePendingAttachments();
+  const ta = useTranslations("foundation.attachments");
+  const attachEntity = mode === "AR" ? "Receipt" : "Payment";
+  const flushPending = async (id: string) => {
+    if (!pending.files.length) return;
+    const f = await pending.flush(attachEntity, id);
+    if (f.failed.length) toast.error(ta("pendingFailed", { files: f.failed.join(", ") }));
+  };
 
   const onParty = async (id: string | null) => {
     setHead((h) => ({ ...h, partyId: id ?? "" }));
@@ -89,8 +98,10 @@ export function SettlementEditor({ mode, doc, lookups, can, actions, attachments
     if (res.ok) {
       toast.success(tc("saved"));
       const d = res.data as { id: string };
-      if (!doc) router.replace(`/${locale}${listHref}/${d.id}`);
-      else router.refresh();
+      if (!doc) {
+        await flushPending(d.id);
+        router.replace(`/${locale}${listHref}/${d.id}`);
+      } else router.refresh();
     } else fail(res.fieldErrors ? Object.entries(res.fieldErrors).map(([k, v]) => `${k}: ${v[0]}`).join("; ") : res.error);
   };
   const post = async () => {
@@ -186,7 +197,7 @@ export function SettlementEditor({ mode, doc, lookups, can, actions, attachments
           {doc && doc.status === "DRAFT" && can.delete && <ConfirmButton title={tc("deleteConfirmTitle")} action={() => actions.remove(doc.id)} variant="ghost" onSuccess={() => router.push(`/${locale}${listHref}`)}><Trash2 className="text-destructive" /> <span className="text-destructive">{tc("delete")}</span></ConfirmButton>}
           {doc && <JournalLink id={doc.journalEntryId} />}
         </div>
-        {doc && <AttachmentsPanel entityType={mode === "AR" ? "Receipt" : "Payment"} entityId={doc.id} items={attachments} canUpload={canAttach.upload} canDelete={canAttach.delete} />}
+        {(doc || canAttach.upload) && <AttachmentsPanel entityType={attachEntity} entityId={doc?.id ?? null} items={doc ? attachments : []} canUpload={canAttach.upload} canDelete={canAttach.delete} pending={pending} />}
       </div>
     </>
   );

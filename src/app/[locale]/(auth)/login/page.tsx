@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { LoginForm } from "./login-form";
 import { Link } from "@/i18n/navigation";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 export default async function LoginPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -27,10 +28,11 @@ export default async function LoginPage({ params }: { params: Promise<{ locale: 
             <Link href="/forgot-password" className="text-primary underline">{t("forgotPassword")}</Link>
             <Link href="/portal/login" className="text-muted-foreground underline">{t("customerPortal")}</Link>
           </div>
-          <div className="text-center text-sm text-muted-foreground">
+          <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
             <Link href="/login" locale={locale === "ar" ? "en" : "ar"} className="underline">
               {locale === "ar" ? "English" : "العربية"}
             </Link>
+            <ThemeToggle />
           </div>
         </div>
       </section>

@@ -4,8 +4,7 @@ import { financeLookups } from "@/modules/finance/_shared/lookups";
 import { getBill } from "@/modules/finance/ap/bills";
 import { cancelBillAction, postBillAction, reverseBillAction, saveBillAction } from "@/modules/finance/ap/actions";
 import { DocEditor, type DocData } from "@/components/finance/doc-editor";
-import { listForEntity } from "@/modules/foundation/attachments/service";
-import { can } from "@/core/auth/session";
+import { attachmentRights, listForEntity } from "@/modules/foundation/attachments/service";
 import { plain } from "@/components/data-table/types";
 import { prisma } from "@/lib/prisma";
 
@@ -15,7 +14,7 @@ export default async function BillPage({ params, searchParams }: { params: Promi
   const { session, locale, perms } = await financePage("bill");
   const lk = await financeLookups(session.companyId, locale);
   const actions = { save: saveBillAction, post: postBillAction, cancel: cancelBillAction, reverse: reverseBillAction };
-  const canAttach = { upload: can(session, "foundation.attachment:create"), delete: can(session, "foundation.attachment:delete") };
+  const canAttach = attachmentRights(session, "VendorBill");
   if (id === "new") return <DocEditor mode="AP" doc={null} lookups={lk} can={perms} actions={actions} attachments={[]} canAttach={canAttach} pdfDoc="bill" listHref="/finance/ap/bills" initialParty={sp.vendorId ?? null} />;
   const b = await getBill(session, id);
   if (!b) notFound();

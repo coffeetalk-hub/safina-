@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import { FileDown, LogOut } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -25,7 +26,7 @@ export function PortalHome({ data, labels }: { data: Data; labels: { title: stri
     <div className="mx-auto max-w-5xl p-4 space-y-4">
       <header className="sticky top-2 z-30 flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-background p-4 no-print">
         <div><div className="text-sm text-muted-foreground">{ar ? data.company.nameAr : data.company.nameEn} · {labels.title}</div><div className="text-lg font-semibold">{ar ? data.customer.nameAr : data.customer.nameEn} <span className="text-muted-foreground text-sm" dir="ltr">{data.customer.code}</span></div></div>
-        <div className="flex gap-2"><Button variant="ghost" size="sm" asChild><Link href="/portal" locale={ar ? "en" : "ar"}>{ar ? "English" : "العربية"}</Link></Button><Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: `/${locale}/portal/login` })}><LogOut /> {t("signOut")}</Button></div>
+        <div className="flex items-center gap-2"><ThemeToggle /><Button variant="ghost" size="sm" asChild><Link href="/portal" locale={ar ? "en" : "ar"}>{ar ? "English" : "العربية"}</Link></Button><Button variant="outline" size="sm" onClick={() => signOut({ callbackUrl: `/${locale}/portal/login` })}><LogOut /> {t("signOut")}</Button></div>
       </header>
       <div className="grid gap-3 sm:grid-cols-3">
         <Card><CardHeader><CardTitle className="text-sm text-muted-foreground">{t("outstanding")}</CardTitle></CardHeader><CardContent className="text-2xl font-semibold tabular-nums" dir="ltr">{formatMoney(outstanding, locale)}</CardContent></Card>

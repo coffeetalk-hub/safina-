@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Avatar } from "@/components/ui/misc";
 import { Sidebar } from "./sidebar";
 import { PunchPill } from "@/components/punch/punch-widgets";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { switchCompanyAction, switchLocaleAction } from "./actions";
 import type { NavGroup } from "./nav-config";
 
@@ -79,6 +80,7 @@ export function Header({ user, companies, activeCompanyId, unread, permissions, 
 
       <div className="ms-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
         <PunchPill />
+        <ThemeToggle />
         <Button
           variant="ghost"
           size="sm"

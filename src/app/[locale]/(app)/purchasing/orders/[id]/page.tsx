@@ -5,7 +5,7 @@ import { getPurchaseOrder } from "@/modules/purchasing/orders";
 import { getRequest } from "@/modules/purchasing/requests";
 import { cancelPoAction, confirmPoAction, convertPoAction, markPoSentAction, savePoAction } from "@/modules/purchasing/actions";
 import { DocEditor, type DocData, type DocLine, type Transition } from "@/components/finance/doc-editor";
-import { listForEntity } from "@/modules/foundation/attachments/service";
+import { attachmentRights, listForEntity } from "@/modules/foundation/attachments/service";
 import { can } from "@/core/auth/session";
 import { plain } from "@/components/data-table/types";
 
@@ -14,7 +14,7 @@ export default async function PurchaseOrderPage({ params, searchParams }: { para
   const sp = await searchParams;
   const { session, locale, t, perms } = await purchasingPage("order");
   const lk = await financeLookups(session.companyId, locale);
-  const canAttach = { upload: can(session, "foundation.attachment:create"), delete: can(session, "foundation.attachment:delete") };
+  const canAttach = attachmentRights(session, "PurchaseOrder");
   const canBill = can(session, "finance.bill:create");
   const transitions: Transition[] = [
     { key: "sent", label: t("orders.markSent"), action: markPoSentAction, when: ["APPROVED"], variant: "secondary" },

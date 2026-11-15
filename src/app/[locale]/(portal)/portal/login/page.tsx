@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { PortalLoginForm } from "./form";
 
 export default async function PortalLoginPage({ params }: { params: Promise<{ locale: string }> }) {
@@ -15,7 +16,7 @@ export default async function PortalLoginPage({ params }: { params: Promise<{ lo
           <Link href="/forgot-password?realm=portal" className="text-primary underline">{tAuth("forgotPassword")}</Link>
           <Link href="/login" className="text-muted-foreground underline">{tAuth("staffSignIn")}</Link>
         </div>
-        <div className="text-center text-sm text-muted-foreground"><Link href="/portal/login" locale={locale === "ar" ? "en" : "ar"} className="underline">{locale === "ar" ? "English" : "العربية"}</Link></div>
+        <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground"><Link href="/portal/login" locale={locale === "ar" ? "en" : "ar"} className="underline">{locale === "ar" ? "English" : "العربية"}</Link><ThemeToggle /></div>
       </div>
     </main>
   );

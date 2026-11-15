@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { AttachmentsPanel, type AttachmentItem } from "@/components/attachments/attachments-panel";
+import { usePendingAttachments } from "@/components/attachments/pending";
 import { DocStatus, PdfButtons, JournalLink } from "@/components/finance/doc-toolbar";
 import { PageHeader } from "@/components/shell/page-header";
 import type { FinanceLookups } from "@/modules/finance/_shared/lookups";
@@ -107,6 +108,14 @@ export function DocEditor({ mode, doc, lookups, can, actions, attachments, canAt
   const [lines, setLines] = React.useState<DocLine[]>(doc?.lines.map((l) => ({ ...l, taxCodeId: l.taxCodeId ?? null })) ?? (initialLines && initialLines.length > 0 ? initialLines.map((l) => ({ ...l, taxCodeId: l.taxCodeId ?? defaultTax })) : [{ ...emptyLine(), taxCodeId: defaultTax }]));
   const [busy, setBusy] = React.useState<string | null>(null);
   const [creditWarning, setCreditWarning] = React.useState<string | null>(null);
+  const pending = usePendingAttachments();
+  const ta = useTranslations("foundation.attachments");
+  const attachEntity = entityType ?? (mode === "AR" ? "CustomerInvoice" : mode === "AP" ? "VendorBill" : mode === "QUOTE" ? "Quotation" : mode === "PO" ? "PurchaseOrder" : "SalesOrder");
+  const flushPending = async (id: string) => {
+    if (!pending.files.length) return;
+    const f = await pending.flush(attachEntity, id);
+    if (f.failed.length) toast.error(ta("pendingFailed", { files: f.failed.join(", ") }));
+  };
 
   // party change → default terms/currency
   const onParty = (id: string | null) => {
@@ -174,8 +183,10 @@ export function DocEditor({ mode, doc, lookups, can, actions, attachments, canAt
     if (res.ok) {
       toast.success(tc("saved"));
       const d = res.data as { id: string };
-      if (!doc) router.replace(`/${locale}${listHref}/${d.id}`);
-      else router.refresh();
+      if (!doc) {
+        await flushPending(d.id);
+        router.replace(`/${locale}${listHref}/${d.id}`);
+      } else router.refresh();
     } else fail(res.fieldErrors ? Object.entries(res.fieldErrors).map(([k, v]) => `${k}: ${v[0]}`).join("; ") : res.error);
   };
   const post = async (overrideCredit = false) => {
@@ -390,7 +401,7 @@ export function DocEditor({ mode, doc, lookups, can, actions, attachments, canAt
             </CardContent>
           </Card>
         )}
-        {doc && <AttachmentsPanel entityType={entityType ?? (mode === "AR" ? "CustomerInvoice" : mode === "AP" ? "VendorBill" : mode === "QUOTE" ? "Quotation" : mode === "PO" ? "PurchaseOrder" : "SalesOrder")} entityId={doc.id} items={attachments} canUpload={canAttach.upload} canDelete={canAttach.delete} />}
+        {(doc || canAttach.upload) && <AttachmentsPanel entityType={attachEntity} entityId={doc?.id ?? null} items={doc ? attachments : []} canUpload={canAttach.upload} canDelete={canAttach.delete} pending={pending} />}
       </div>
     </>
   );

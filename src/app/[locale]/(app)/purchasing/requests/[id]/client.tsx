@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { AttachmentsPanel, type AttachmentItem } from "@/components/attachments/attachments-panel";
+import { usePendingAttachments } from "@/components/attachments/pending";
 import { DocStatus } from "@/components/finance/doc-toolbar";
 import { PageHeader } from "@/components/shell/page-header";
 import type { FinanceLookups } from "@/modules/finance/_shared/lookups";
@@ -58,12 +59,20 @@ export function RequestEditor({ doc, lookups, can, extra, attachments, canAttach
   };
   const total = lines.reduce((a, l) => a + Number(l.quantity || 0) * Number(l.estimatedPrice || 0), 0);
   const fail = (err: string) => toast.error(te.has(err) ? te(err) : err);
+  const pending = usePendingAttachments();
+  const ta = useTranslations("foundation.attachments");
+  const attachEntity = "PurchaseRequest";
+  const flushPending = async (id: string) => {
+    if (!pending.files.length) return;
+    const f = await pending.flush(attachEntity, id);
+    if (f.failed.length) toast.error(ta("pendingFailed", { files: f.failed.join(", ") }));
+  };
 
   const save = async () => {
     setBusy("save");
     const res = await saveRequestAction({ id: doc?.id ?? null, ...head, neededBy: head.neededBy || null, requesterId: head.requesterId || null, costCenterId: head.costCenterId || null, branchId: head.branchId || null, purpose: head.purpose || null, notes: head.notes || null, lines: lines.filter((l) => l.descriptionAr || l.descriptionEn).map((l) => ({ ...l, descriptionAr: l.descriptionAr || l.descriptionEn, descriptionEn: l.descriptionEn || l.descriptionAr, quantity: Number(l.quantity || 0), estimatedPrice: Number(l.estimatedPrice || 0) })) });
     setBusy(null);
-    if (res.ok) { toast.success(tc("saved")); const d = res.data as { id: string }; if (!doc) router.replace(`/${locale}/purchasing/requests/${d.id}`); else router.refresh(); }
+    if (res.ok) { toast.success(tc("saved")); const d = res.data as { id: string }; if (!doc) { await flushPending(d.id); router.replace(`/${locale}/purchasing/requests/${d.id}`); } else router.refresh(); }
     else fail(res.fieldErrors ? Object.entries(res.fieldErrors).map(([k, v]) => `${k}: ${v[0]}`).join("; ") : res.error);
   };
   const submit = async () => {
@@ -150,7 +159,7 @@ export function RequestEditor({ doc, lookups, can, extra, attachments, canAttach
           {doc && ["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED"].includes(doc.status) && can.edit && <ConfirmButton title={tfin("cancelConfirm")} action={() => cancelRequestAction(doc.id)} variant="ghost"><Ban /> {tfin("cancelDoc")}</ConfirmButton>}
           {doc && doc.status === "DRAFT" && can.delete && <ConfirmButton title={tc("deleteConfirmTitle")} action={() => deleteRequestAction(doc.id)} onSuccess={() => router.push(`/${locale}/purchasing/requests`)}><Trash2 /> {tc("delete")}</ConfirmButton>}
         </div>
-        {doc && (attachments.length > 0 || canAttach.upload) && <AttachmentsPanel entityType="PurchaseRequest" entityId={doc.id} items={attachments} canUpload={canAttach.upload} canDelete={canAttach.delete} />}
+        {(doc ? attachments.length > 0 || canAttach.upload : canAttach.upload) && <AttachmentsPanel entityType="PurchaseRequest" entityId={doc?.id ?? null} items={doc ? attachments : []} canUpload={canAttach.upload} canDelete={canAttach.delete} pending={pending} />}
       </div>
       <Dialog open={rfqOpen} onOpenChange={setRfqOpen}>
         <DialogContent>

@@ -35,7 +35,7 @@ export default async function ContractsPage({ searchParams }: { searchParams: SP
           { name: "ownerId", label: t("contractOwner"), type: "select", options: lk.employees, colSpan: 2 },
           { name: "termsAr", label: t("termsAr"), type: "textarea", dir: "rtl" }, { name: "termsEn", label: t("termsEn"), type: "textarea", dir: "ltr" },
         ]}
-        saveAction={saveContractAction} removeAction={removeContractAction} can={perms} />
+        saveAction={saveContractAction} removeAction={removeContractAction} can={perms} attach={{ entityType: "VendorContract", canUpload: perms.create || perms.edit, canDelete: perms.edit || perms.delete }} />
     </>
   );
 }

@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, Table
 import { Link } from "@/i18n/navigation";
 import { formatMoney, formatNumber } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
+import { chartAxis, chartTooltip } from "@/components/charts/theme";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 
 type Row = Record<string, string | number | null>;
@@ -51,7 +52,7 @@ export function HrReportsClient({ year, data }: { year: number; data: any }) {
       </div>
       <div className="h-56 rounded-md border bg-card p-3" dir="ltr">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data.byMonth}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="period" fontSize={11} /><YAxis fontSize={11} /><Tooltip /><Legend /><Bar dataKey="net" name={t("net")} stackId="a" fill="var(--chart-1)" /><Bar dataKey="gosiEmployer" name={t("gosiEmployer")} stackId="a" fill="var(--chart-4)" radius={[4, 4, 0, 0]} /></BarChart>
+          <BarChart data={data.byMonth}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="period" fontSize={11} {...chartAxis} /><YAxis fontSize={11} {...chartAxis} /><Tooltip {...chartTooltip} /><Legend /><Bar dataKey="net" name={t("net")} stackId="a" fill="var(--chart-1)" /><Bar dataKey="gosiEmployer" name={t("gosiEmployer")} stackId="a" fill="var(--chart-4)" radius={[4, 4, 0, 0]} /></BarChart>
         </ResponsiveContainer>
       </div>
       <Tabs defaultValue="headcount">

@@ -11,6 +11,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatMoney, formatNumber } from "@/lib/money";
+import { chartAxis, chartTooltip } from "@/components/charts/theme";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 type Opt = { value: string; label: string };
@@ -56,7 +57,7 @@ export function SalesReportsClient({ filters, lookups, data }: { filters: { from
       </div>
       <div className="h-56 rounded-md border bg-card p-3" dir="ltr">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data.byPeriod}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="period" fontSize={11} /><YAxis fontSize={11} /><Tooltip /><Bar dataKey="net" name={t("reports.net")} fill="var(--chart-2)" radius={[4, 4, 0, 0]} /></BarChart>
+          <BarChart data={data.byPeriod}><CartesianGrid strokeDasharray="3 3" stroke="var(--border)" /><XAxis dataKey="period" fontSize={11} {...chartAxis} /><YAxis fontSize={11} {...chartAxis} /><Tooltip {...chartTooltip} /><Bar dataKey="net" name={t("reports.net")} fill="var(--chart-2)" radius={[4, 4, 0, 0]} /></BarChart>
         </ResponsiveContainer>
       </div>
       <Tabs defaultValue="customer">

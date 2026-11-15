@@ -35,7 +35,7 @@ export default async function EvaluationsPage({ searchParams }: { searchParams: 
             { name: "compliance", label: `${t("criteria.compliance")} (${WEIGHTS.compliance}%)`, type: "select", options: opts },
             { name: "comments", label: t("comments"), type: "textarea", colSpan: 2 },
           ]}
-          saveAction={saveEvaluationAction} removeAction={removeEvaluationAction} can={perms} />
+          saveAction={saveEvaluationAction} removeAction={removeEvaluationAction} can={perms} attach={{ entityType: "VendorEvaluation", canUpload: perms.create || perms.edit, canDelete: perms.edit || perms.delete }} />
         <Card>
           <CardHeader><CardTitle className="text-base">{t("evaluations.scorecard")}</CardTitle></CardHeader>
           <CardContent>

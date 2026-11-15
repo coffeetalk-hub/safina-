@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { WidgetData } from "@/core/dashboard/registry";
 import { formatMoney, formatNumber } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { chartAxis, chartTooltip } from "@/components/charts/theme";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 
 const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
@@ -68,18 +69,18 @@ export function WidgetGrid({ widgets }: { widgets: { key: string; size: number; 
                     {w.data.type === "bar" ? (
                       <BarChart data={w.data.data}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey={w.data.xKey} fontSize={11} />
-                        <YAxis fontSize={11} />
-                        <Tooltip />
+                        <XAxis dataKey={w.data.xKey} fontSize={11} {...chartAxis} />
+                        <YAxis fontSize={11} {...chartAxis} />
+                        <Tooltip {...chartTooltip} />
                         <Legend />
                         {w.data.series.map((s, i) => <Bar key={s.key} dataKey={s.key} name={s.label} fill={COLORS[i % COLORS.length]} radius={[4, 4, 0, 0]} />)}
                       </BarChart>
                     ) : w.data.type === "line" ? (
                       <LineChart data={w.data.data}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                        <XAxis dataKey={w.data.xKey} fontSize={11} />
-                        <YAxis fontSize={11} />
-                        <Tooltip />
+                        <XAxis dataKey={w.data.xKey} fontSize={11} {...chartAxis} />
+                        <YAxis fontSize={11} {...chartAxis} />
+                        <Tooltip {...chartTooltip} />
                         <Legend />
                         {w.data.series.map((s, i) => <Line key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={COLORS[i % COLORS.length]} dot={false} />)}
                       </LineChart>
@@ -88,7 +89,7 @@ export function WidgetGrid({ widgets }: { widgets: { key: string; size: number; 
                         <Pie data={w.data.data} dataKey={w.data.series[0]?.key} nameKey={w.data.xKey} outerRadius={80} label>
                           {w.data.data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                         </Pie>
-                        <Tooltip />
+                        <Tooltip {...chartTooltip} />
                       </PieChart>
                     )}
                   </ResponsiveContainer>

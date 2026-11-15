@@ -54,6 +54,7 @@ export default async function VendorsPage({ searchParams }: { searchParams: SP }
         saveAction={saveVendor}
         removeAction={removeVendor}
         can={perms}
+        attach={{ entityType: "Vendor", canUpload: perms.create || perms.edit, canDelete: perms.edit || perms.delete }}
         dialogSize="xl"
       />
     </>

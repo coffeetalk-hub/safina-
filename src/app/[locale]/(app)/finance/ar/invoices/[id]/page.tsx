@@ -4,8 +4,7 @@ import { financeLookups } from "@/modules/finance/_shared/lookups";
 import { getInvoice } from "@/modules/finance/ar/invoices";
 import { cancelInvoiceAction, creditNoteAction, postInvoiceAction, reverseInvoiceAction, saveInvoiceAction, submitZatcaAction } from "@/modules/finance/ar/actions";
 import { DocEditor, type DocData } from "@/components/finance/doc-editor";
-import { listForEntity } from "@/modules/foundation/attachments/service";
-import { can } from "@/core/auth/session";
+import { attachmentRights, listForEntity } from "@/modules/foundation/attachments/service";
 import { plain } from "@/components/data-table/types";
 import { prisma } from "@/lib/prisma";
 
@@ -15,7 +14,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const { session, locale, perms } = await financePage("invoice");
   const lk = await financeLookups(session.companyId, locale);
   const actions = { save: saveInvoiceAction, post: postInvoiceAction, cancel: cancelInvoiceAction, reverse: reverseInvoiceAction, creditNote: creditNoteAction, submitZatca: submitZatcaAction };
-  const canAttach = { upload: can(session, "foundation.attachment:create"), delete: can(session, "foundation.attachment:delete") };
+  const canAttach = attachmentRights(session, "CustomerInvoice");
   if (id === "new") return <DocEditor mode="AR" doc={null} lookups={lk} can={perms} actions={actions} attachments={[]} canAttach={canAttach} pdfDoc="invoice" listHref="/finance/ar/invoices" initialParty={sp.customerId ?? null} />;
   const inv = await getInvoice(session, id);
   if (!inv) notFound();

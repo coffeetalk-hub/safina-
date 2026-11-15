@@ -15,7 +15,8 @@ Legend: ✅ done · 🔄 in progress · ⬜ not started · ⚠️ needs your inp
 - ✅ Audit log (Prisma extension): who/what/when, before → after, field diff; viewer with filters + export
 - ✅ Document numbering (configurable prefix/pattern/reset, row-locked, gap-free)
 - ✅ Approval engine: policies by docType + amount band, multi-step (role or user), inbox “My approvals”, hooks for modules
-- ✅ Attachments on any entity (local disk storage behind interface), panel component + download route
+- ✅ Attachments on any entity (local disk storage behind interface), panel component + download route. Files can be added **while creating** a record (queued, uploaded right after the first save) and from edit dialogs (customers, vendors, employees, contracts, documents, evaluations, assets, petty-cash vouchers). Rights follow the record: view it → download, create/edit it → attach; employees may attach to their own leave, loans and purchase requests
+- ✅ Light / dark / system theme (toggle in the header, portal and sign-in pages; remembered per browser, applied before first paint)
 - ✅ In-app notifications (bell + page) + email outbox with SMTP flush via cron route
 - ✅ Dashboard framework: widget registry, role-based layouts, stat/list/chart/links widget types (Recharts)
 - ✅ Settings: logo upload, invoice template options, footer/terms (AR/EN), bank details, QR toggle

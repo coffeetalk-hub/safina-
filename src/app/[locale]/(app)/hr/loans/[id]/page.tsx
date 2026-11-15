@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { attachmentRights, listForEntity } from "@/modules/foundation/attachments/service";
 import { hrPage } from "@/modules/hr/page-helpers";
 import { financeLookups } from "@/modules/finance/_shared/lookups";
 import { getLoan } from "@/modules/hr/loans";
@@ -12,9 +13,11 @@ export default async function LoanPage({ params, searchParams }: { params: Promi
   const { session, locale, perms } = await hrPage("loan", undefined, { selfService: true });
   const [lk, me, allowed] = await Promise.all([financeLookups(session.companyId, locale), myEmployee(session), allowedEmployeeIds(session, "loan")]);
   const employees = allowed ? lk.employees.filter((e) => allowed.includes(e.value)) : lk.employees;
-  if (id === "new") return <LoanEditor doc={null} employees={employees} defaultEmployeeId={allowed ? (allowed[0] ?? "") : (sp.employeeId ?? me?.id ?? "")} perms={perms} journal={null} />;
+  const canAttach = attachmentRights(session, "EmployeeLoan");
+  if (id === "new") return <LoanEditor doc={null} employees={employees} defaultEmployeeId={allowed ? (allowed[0] ?? "") : (sp.employeeId ?? me?.id ?? "")} perms={perms} journal={null} attachments={[]} canAttach={canAttach} />;
   const l = await getLoan(session, id);
   if (!l) notFound();
+  const attachments = await listForEntity(session.companyId, "EmployeeLoan", id);
   const journal = l.journalEntryId ? await prisma.journalEntry.findUnique({ where: { id: l.journalEntryId }, select: { id: true, number: true } }) : null;
-  return <LoanEditor doc={plain(l)} employees={employees} defaultEmployeeId={l.employeeId} perms={perms} journal={journal} />;
+  return <LoanEditor doc={plain(l)} employees={employees} defaultEmployeeId={l.employeeId} perms={perms} journal={journal} attachments={plain(attachments)} canAttach={canAttach} />;
 }

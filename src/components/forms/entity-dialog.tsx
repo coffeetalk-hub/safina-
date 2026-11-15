@@ -14,6 +14,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import type { ActionResult } from "@/core/action";
+import { DialogAttachments } from "@/components/attachments/attachments-panel";
+import { usePendingAttachments } from "@/components/attachments/pending";
 import { cn } from "@/lib/utils";
 
 export type FieldType = "text" | "number" | "email" | "password" | "date" | "textarea" | "select" | "switch" | "hidden";
@@ -52,17 +54,25 @@ type Props<T extends FieldValues> = {
   onSuccess?: (data: unknown) => void;
   size?: "sm" | "md" | "lg" | "xl";
   columns?: 1 | 2;
+  /** Show an attachments box: files queue until the record is saved, then upload with its id. */
+  attach?: { entityType: string; entityId?: string | null; canUpload: boolean; canDelete: boolean };
   /** Extra content rendered below generated fields */
   children?: React.ReactNode;
 };
 
-export function EntityDialog<T extends FieldValues>({ open, onOpenChange, title, description, fields, defaultValues, action, onSuccess, size = "lg", columns = 2, children }: Props<T>) {
+export function EntityDialog<T extends FieldValues>({ open, onOpenChange, title, description, fields, defaultValues, action, onSuccess, size = "lg", columns = 2, attach, children }: Props<T>) {
   const t = useTranslations("common");
   const te = useTranslations("errors");
+  const ta = useTranslations("foundation.attachments");
   const toast = useToast();
   const router = useRouter();
   const [loading, setLoading] = React.useState(false);
   const form = useForm<T>({ defaultValues });
+  const pending = usePendingAttachments();
+  const close = (o: boolean) => {
+    if (!o) pending.clear();
+    onOpenChange(o);
+  };
 
   React.useEffect(() => {
     if (open) form.reset(defaultValues);
@@ -85,8 +95,13 @@ export function EntityDialog<T extends FieldValues>({ open, onOpenChange, title,
     const res = await action(payload);
     setLoading(false);
     if (res.ok) {
+      const savedId = (res.data as { id?: string } | null)?.id ?? attach?.entityId ?? null;
+      if (attach && savedId && pending.files.length) {
+        const f = await pending.flush(attach.entityType, savedId);
+        if (f.failed.length) toast.error(ta("pendingFailed", { files: f.failed.join(", ") }));
+      }
       toast.success(t("saved"));
-      onOpenChange(false);
+      close(false);
       onSuccess?.(res.data);
       router.refresh();
     } else {
@@ -100,7 +115,7 @@ export function EntityDialog<T extends FieldValues>({ open, onOpenChange, title,
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={close}>
       <DialogContent size={size}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
@@ -163,9 +178,12 @@ export function EntityDialog<T extends FieldValues>({ open, onOpenChange, title,
                 );
               })}
             </div>
+            {attach && (attach.canUpload || attach.entityId) && (
+              <DialogAttachments key={attach.entityId ?? "new"} entityType={attach.entityType} entityId={attach.entityId ?? null} canUpload={attach.canUpload} canDelete={attach.canDelete} pending={pending} />
+            )}
             {children}
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button type="button" variant="outline" onClick={() => close(false)}>
                 {t("cancel")}
               </Button>
               <Button type="submit" disabled={loading}>

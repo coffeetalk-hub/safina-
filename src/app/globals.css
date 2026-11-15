@@ -38,7 +38,17 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
+:root {
+  color-scheme: light;
+}
+
 .dark {
+  color-scheme: dark;
+  --chart-1: oklch(0.75 0.17 50);
+  --chart-2: oklch(0.72 0.13 185);
+  --chart-3: oklch(0.72 0.12 230);
+  --chart-4: oklch(0.85 0.17 85);
+  --chart-5: oklch(0.8 0.16 65);
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -217,6 +227,7 @@
 
 .punch-pill { position: relative; }
 .punch-pill-live { border-color: oklch(0.6 0.15 155 / .55); color: oklch(0.45 0.13 155); }
+.dark .punch-pill-live { color: oklch(0.8 0.13 155); }
 .punch-live-dot { position: relative; display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: oklch(0.6 0.15 155); }
 .punch-live-dot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: inherit; animation: punch-ripple 1.8s ease-out infinite; }
 

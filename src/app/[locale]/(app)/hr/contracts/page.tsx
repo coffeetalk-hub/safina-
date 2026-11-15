@@ -33,7 +33,7 @@ export default async function ContractsPage({ searchParams }: { searchParams: SP
           { name: "jobTitleAr", label: tf("jobTitleAr"), dir: "rtl" }, { name: "jobTitleEn", label: tf("jobTitleEn"), dir: "ltr" },
           { name: "notes", label: tf("notes"), type: "textarea", colSpan: 2 },
         ]}
-        saveAction={saveContractAction} removeAction={removeContractAction} can={perms} />
+        saveAction={saveContractAction} removeAction={removeContractAction} can={perms} attach={{ entityType: "EmployeeContract", canUpload: perms.create || perms.edit, canDelete: perms.edit || perms.delete }} />
     </>
   );
 }

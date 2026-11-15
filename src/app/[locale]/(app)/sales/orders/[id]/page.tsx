@@ -5,8 +5,7 @@ import { pricingData } from "@/modules/sales/pricing";
 import { getOrder } from "@/modules/sales/quotations";
 import { cancelOrderAction, confirmOrderAction, convertOrderAction, saveOrderAction } from "@/modules/sales/actions";
 import { DocEditor, type DocData, type Transition } from "@/components/finance/doc-editor";
-import { listForEntity } from "@/modules/foundation/attachments/service";
-import { can } from "@/core/auth/session";
+import { attachmentRights, listForEntity } from "@/modules/foundation/attachments/service";
 import { plain } from "@/components/data-table/types";
 
 export default async function OrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ customerId?: string }> }) {
@@ -14,7 +13,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const sp = await searchParams;
   const { session, locale, t, perms } = await salesPage("order");
   const [lk, pricing] = await Promise.all([financeLookups(session.companyId, locale), pricingData(session.companyId)]);
-  const canAttach = { upload: can(session, "foundation.attachment:create"), delete: can(session, "foundation.attachment:delete") };
+  const canAttach = attachmentRights(session, "SalesOrder");
   const transitions: Transition[] = [
     { key: "invoice", label: t("orders.toInvoice"), action: convertOrderAction, when: ["CONFIRMED", "PARTIALLY_INVOICED"], variant: "default", navigateTo: "/finance/ar/invoices", confirm: t("orders.toInvoiceConfirm") },
     { key: "cancel", label: t("orders.cancel"), action: cancelOrderAction, when: ["DRAFT", "CONFIRMED"], variant: "ghost" },

@@ -16,6 +16,8 @@ import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { DocStatus, JournalLink } from "@/components/finance/doc-toolbar";
 import { PageHeader } from "@/components/shell/page-header";
+import { AttachmentsPanel, type AttachmentItem } from "@/components/attachments/attachments-panel";
+import { usePendingAttachments } from "@/components/attachments/pending";
 import { approveEosbAction, cancelEosbAction, payEosbAction, postEosbAction, previewEosbAction, saveEosbAction } from "@/modules/hr/actions";
 import { EOS_REASONS } from "@/modules/hr/constants";
 import { formatMoney, formatNumber } from "@/lib/money";
@@ -26,7 +28,7 @@ type Preview = { hireDate?: string | null; serviceYears: number; monthlyWage: nu
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Doc = any;
 
-export function EosbEditor({ doc, employees, defaultEmployeeId, perms }: { doc: Doc | null; employees: Opt[]; defaultEmployeeId: string; perms: { create: boolean; edit: boolean; approve: boolean } }) {
+export function EosbEditor({ doc, employees, defaultEmployeeId, perms, attachments, canAttach }: { doc: Doc | null; employees: Opt[]; defaultEmployeeId: string; perms: { create: boolean; edit: boolean; approve: boolean }; attachments: AttachmentItem[]; canAttach: { upload: boolean; delete: boolean } }) {
   const t = useTranslations("hr"); const tf = useTranslations("fields"); const tc = useTranslations("common"); const te = useTranslations("errors"); const tk = useTranslations("enums"); const tfin = useTranslations("finance");
   const locale = useLocale(); const ar = locale === "ar"; const toast = useToast(); const router = useRouter();
   const editable = !doc || doc.status === "DRAFT";
@@ -34,9 +36,17 @@ export function EosbEditor({ doc, employees, defaultEmployeeId, perms }: { doc: 
   const [pv, setPv] = React.useState<Preview | null>(doc ? { hireDate: null, serviceYears: Number(doc.serviceYears), monthlyWage: Number(doc.monthlyWage), fullEntitlement: Number(doc.fullEntitlement), pct: doc.eosbPct, eosbAmount: Number(doc.eosbAmount), leaveDays: Number(doc.leaveDays), leaveEncashment: Number(doc.leaveEncashment), loanBalance: Number(doc.loanBalance), otherAdditions: Number(doc.otherAdditions), otherDeductions: Number(doc.otherDeductions), netAmount: Number(doc.netAmount) } : null);
   const [busy, setBusy] = React.useState<string | null>(null);
   const fail = (err: string) => toast.error(te.has(err) ? te(err) : err);
+  const pending = usePendingAttachments();
+  const ta = useTranslations("foundation.attachments");
+  const attachEntity = "EndOfServiceCalc";
+  const flushPending = async (id: string) => {
+    if (!pending.files.length) return;
+    const f = await pending.flush(attachEntity, id);
+    if (f.failed.length) toast.error(ta("pendingFailed", { files: f.failed.join(", ") }));
+  };
   const payload = () => ({ id: doc?.id ?? null, employeeId: f.employeeId, terminationDate: f.terminationDate, reason: f.reason, leaveDays: f.leaveDays === "" ? null : Number(f.leaveDays), otherAdditions: Number(f.otherAdditions || 0), otherDeductions: Number(f.otherDeductions || 0), notes: f.notes || null });
   const preview = async () => { setBusy("preview"); const r = await previewEosbAction(payload()); setBusy(null); if (r.ok) setPv(r.data as unknown as Preview); else fail(r.error); };
-  const save = async () => { setBusy("save"); const r = await saveEosbAction(payload()); setBusy(null); if (r.ok) { toast.success(tc("saved")); if (!doc) router.replace(`/${locale}/hr/eosb/${(r.data as { id: string }).id}`); else router.refresh(); } else fail(r.error); };
+  const save = async () => { setBusy("save"); const r = await saveEosbAction(payload()); setBusy(null); if (r.ok) { toast.success(tc("saved")); if (!doc) { await flushPending((r.data as { id: string }).id); router.replace(`/${locale}/hr/eosb/${(r.data as { id: string }).id}`); } else router.refresh(); } else fail(r.error); };
   const row = (label: string, v: string, bold?: boolean) => <div className={`flex justify-between gap-3 ${bold ? "border-t pt-2 text-base font-semibold" : ""}`}><span className={bold ? "" : "text-muted-foreground"}>{label}</span><span dir="ltr" className="tabular-nums">{v}</span></div>;
   return (
     <>
@@ -71,6 +81,7 @@ export function EosbEditor({ doc, employees, defaultEmployeeId, perms }: { doc: 
           {doc?.payment && <div><JournalLink id={doc.payment.id} number={doc.payment.number} /></div>}
         </CardContent></Card>
       </div>
+      {(doc || canAttach.upload) && <div className="mt-4"><AttachmentsPanel entityType="EndOfServiceCalc" entityId={doc?.id ?? null} items={doc ? attachments : []} canUpload={canAttach.upload} canDelete={canAttach.delete} pending={pending} /></div>}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {editable && (perms.create || perms.edit) && <Button onClick={save} disabled={busy !== null || !f.employeeId}>{busy === "save" ? <Loader2 className="animate-spin" /> : <Save />} {tc("save")}</Button>}
         {doc && doc.status === "DRAFT" && perms.approve && <ConfirmButton title={tc("approve")} action={() => approveEosbAction(doc.id)} variant="default"><Check /> {tc("approve")}</ConfirmButton>}

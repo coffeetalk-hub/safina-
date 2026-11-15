@@ -31,6 +31,8 @@ export type CrudListProps = {
   rowHrefTemplate?: string;
   /** Row → form defaults mapping for date fields: list of keys to convert ISO datetime → yyyy-mm-dd */
   dateFields?: string[];
+  /** Attachments box in the dialog; the record id is the row being edited (or the new row after save). */
+  attach?: { entityType: string; canUpload: boolean; canDelete: boolean };
 };
 
 export function CrudList(p: CrudListProps) {
@@ -76,7 +78,7 @@ export function CrudList(p: CrudListProps) {
           </>
         }
       />
-      <EntityDialog open={open} onOpenChange={setOpen} title={editing ? p.titleEdit : p.titleNew} fields={p.fields} defaultValues={defaults} action={p.saveAction} size={p.dialogSize}>
+      <EntityDialog open={open} onOpenChange={setOpen} title={editing ? p.titleEdit : p.titleNew} fields={p.fields} defaultValues={defaults} action={p.saveAction} size={p.dialogSize} attach={p.attach ? { ...p.attach, entityId: editing ? String(editing.id) : null } : undefined}>
         {editing && p.can.delete && p.removeAction && (
           <div className="flex justify-start">
             <ConfirmButton title={t("deleteConfirmTitle")} description={t("deleteConfirmDesc")} action={() => p.removeAction!(String(editing.id))} variant="ghost" size="sm" onSuccess={() => setOpen(false)}>

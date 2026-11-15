@@ -19,6 +19,8 @@ import { EntityDialog } from "@/components/forms/entity-dialog";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { useToast } from "@/components/ui/toast";
 import { DocStatus } from "@/components/finance/doc-toolbar";
+import { DialogAttachments } from "@/components/attachments/attachments-panel";
+import { usePendingAttachments } from "@/components/attachments/pending";
 import { deleteVoucherAction, postVoucherAction, removeFundAction, reverseVoucherAction, saveFundAction, saveVoucherAction } from "@/modules/finance/actions";
 import type { FinanceLookups } from "@/modules/finance/_shared/lookups";
 import { formatMoney } from "@/lib/money";
@@ -42,6 +44,14 @@ export function PettyCashClient({ funds, vouchers, columns, lookups, can, filter
   const [form, setForm] = React.useState({ fundId: "", voucherDate: new Date().toISOString().slice(0, 10), type: "EXPENSE", description: "", amount: "" as string | number, taxCodeId: lookups.taxCodes.find((x) => x.meta?.isDefault)?.value ?? null, expenseAccountId: null as string | null, costCenterId: null as string | null, bankAccountId: (lookups.bankAccounts[0]?.value ?? null) as string | null, vendorName: "" });
   const [busy, setBusy] = React.useState(false);
   const fail = (e: string) => toast.error(te.has(e) ? te(e) : e);
+  const pending = usePendingAttachments();
+  const ta = useTranslations("foundation.attachments");
+  const attachEntity = "PettyCashVoucher";
+  const flushPending = async (id: string) => {
+    if (!pending.files.length) return;
+    const f = await pending.flush(attachEntity, id);
+    if (f.failed.length) toast.error(ta("pendingFailed", { files: f.failed.join(", ") }));
+  };
   const expenseAccounts = lookups.accounts.filter((a) => a.meta?.type === "EXPENSE");
 
   const openVoucher = (row: Row | null) => {
@@ -58,6 +68,8 @@ export function PettyCashClient({ funds, vouchers, columns, lookups, can, filter
     const res = await saveVoucherAction({ id: v?.id ?? null, ...form, amount: Number(form.amount || 0), vendorName: form.vendorName || null });
     setBusy(false);
     if (res.ok) {
+      const savedId = v ? String(v.id) : (res.data as { id?: string } | null)?.id;
+      if (savedId) await flushPending(savedId);
       toast.success(tc("saved"));
       setVOpen(false);
       router.refresh();
@@ -119,7 +131,7 @@ export function PettyCashClient({ funds, vouchers, columns, lookups, can, filter
         </EntityDialog>
       </TabsContent>
 
-      <Dialog open={vOpen} onOpenChange={setVOpen}>
+      <Dialog open={vOpen} onOpenChange={(o) => { if (!o) pending.clear(); setVOpen(o); }}>
         <DialogContent size="lg">
           <DialogHeader><DialogTitle className="flex items-center gap-2">{v ? `${t("pettyCash.voucher")} ${String(v.number)}` : t("pettyCash.newVoucher")} {v && <DocStatus status={String(v.status)} />}</DialogTitle></DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -142,6 +154,7 @@ export function PettyCashClient({ funds, vouchers, columns, lookups, can, filter
               <div className="space-y-1 sm:col-span-2"><Label>{t("bankAccount")}</Label><Combobox options={lookups.bankAccounts} value={form.bankAccountId} disabled={!editable} onChange={(x) => setForm({ ...form, bankAccountId: x })} /></div>
             )}
           </div>
+          {(v || can.create) && <DialogAttachments key={v ? String(v.id) : "new"} entityType="PettyCashVoucher" entityId={v ? String(v.id) : null} canUpload={editable ? can.create || can.edit : false} canDelete={can.edit || can.delete} pending={pending} />}
           <DialogFooter className="sm:justify-between">
             <div className="flex gap-2">
               {v && v.status === "DRAFT" && can.delete && <ConfirmButton title={tc("deleteConfirmTitle")} action={() => deleteVoucherAction(String(v.id))} variant="ghost" size="sm" onSuccess={() => setVOpen(false)}><Trash2 className="text-destructive" /></ConfirmButton>}

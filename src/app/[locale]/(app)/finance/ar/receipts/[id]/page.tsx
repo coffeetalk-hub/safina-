@@ -4,8 +4,7 @@ import { financeLookups } from "@/modules/finance/_shared/lookups";
 import { getReceipt, openInvoices } from "@/modules/finance/ar/receipts";
 import { deleteReceiptAction, openInvoicesAction, postReceiptAction, reverseReceiptAction, saveReceiptAction } from "@/modules/finance/ar/actions";
 import { SettlementEditor, type SettlementData } from "@/components/finance/settlement-editor";
-import { listForEntity } from "@/modules/foundation/attachments/service";
-import { can } from "@/core/auth/session";
+import { attachmentRights, listForEntity } from "@/modules/foundation/attachments/service";
 import { plain } from "@/components/data-table/types";
 
 export default async function ReceiptPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ customerId?: string }> }) {
@@ -14,7 +13,7 @@ export default async function ReceiptPage({ params, searchParams }: { params: Pr
   const { session, locale, perms } = await financePage("receipt");
   const lk = await financeLookups(session.companyId, locale);
   const actions = { save: saveReceiptAction, post: postReceiptAction, reverse: reverseReceiptAction, remove: deleteReceiptAction, loadOpen: openInvoicesAction };
-  const canAttach = { upload: can(session, "foundation.attachment:create"), delete: can(session, "foundation.attachment:delete") };
+  const canAttach = attachmentRights(session, "Receipt");
   const mapOpen = (rows: Awaited<ReturnType<typeof openInvoices>>) => plain(rows).map((r) => ({ id: r.id, number: r.number, date: r.invoiceDate, dueDate: r.dueDate, total: r.total, outstanding: r.outstanding, allocated: r.allocated }));
   if (id === "new") {
     const open = sp.customerId ? mapOpen(await openInvoices(session, sp.customerId)) : [];

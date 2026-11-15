@@ -16,6 +16,8 @@ import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { DocStatus } from "@/components/finance/doc-toolbar";
 import { PageHeader } from "@/components/shell/page-header";
+import { AttachmentsPanel, type AttachmentItem } from "@/components/attachments/attachments-panel";
+import { usePendingAttachments } from "@/components/attachments/pending";
 import { cancelLeaveAction, decideLeaveAction, deleteLeaveAction, saveLeaveAction, submitLeaveAction } from "@/modules/hr/actions";
 import { calendarDays } from "@/modules/hr/rules";
 import { formatDateTime } from "@/lib/dates";
@@ -25,7 +27,7 @@ type TypeOpt = Opt & { code: string; max: number | null; isPaid: boolean };
 type Bal = { leaveTypeId: string; remaining: number; entitled: number; taken: number; leaveType: { nameAr: string; nameEn: string } };
 export type LeaveDoc = { id: string; number: string; status: string; employeeId: string; employeeAr: string; employeeEn: string; leaveTypeId: string; startDate: string; endDate: string; days: number; reason: string | null; approvals: { step: number; decision: string; comment: string | null; at: string; user: { nameAr: string; nameEn: string } }[] };
 
-export function LeaveEditor({ doc, employees, types, defaultEmployeeId, balances, perms }: { doc: LeaveDoc | null; employees: Opt[]; types: TypeOpt[]; defaultEmployeeId: string; balances: Bal[]; perms: { create: boolean; edit: boolean; delete: boolean; approve: boolean; allEmployees: boolean } }) {
+export function LeaveEditor({ doc, employees, types, defaultEmployeeId, balances, perms, attachments, canAttach }: { doc: LeaveDoc | null; employees: Opt[]; types: TypeOpt[]; defaultEmployeeId: string; balances: Bal[]; perms: { create: boolean; edit: boolean; delete: boolean; approve: boolean; allEmployees: boolean }; attachments: AttachmentItem[]; canAttach: { upload: boolean; delete: boolean } }) {
   const t = useTranslations("hr"); const tf = useTranslations("fields"); const tc = useTranslations("common"); const te = useTranslations("errors");
   const locale = useLocale(); const ar = locale === "ar"; const toast = useToast(); const router = useRouter();
   const editable = !doc || doc.status === "DRAFT" || doc.status === "REJECTED";
@@ -36,11 +38,19 @@ export function LeaveEditor({ doc, employees, types, defaultEmployeeId, balances
   const type = types.find((x) => x.value === f.leaveTypeId);
   const bal = balances.find((b) => b.leaveTypeId === f.leaveTypeId);
   const fail = (err: string) => toast.error(te.has(err) ? te(err) : err);
+  const pending = usePendingAttachments();
+  const ta = useTranslations("foundation.attachments");
+  const attachEntity = "LeaveRequest";
+  const flushPending = async (id: string) => {
+    if (!pending.files.length) return;
+    const f = await pending.flush(attachEntity, id);
+    if (f.failed.length) toast.error(ta("pendingFailed", { files: f.failed.join(", ") }));
+  };
   const save = async () => {
     setBusy("save");
     const r = await saveLeaveAction({ id: doc?.id ?? null, ...f, reason: f.reason || null });
     setBusy(null);
-    if (r.ok) { toast.success(tc("saved")); if (!doc) router.replace(`/${locale}/hr/leave/${(r.data as { id: string }).id}`); else router.refresh(); } else fail(r.fieldErrors ? Object.values(r.fieldErrors).flat().join("; ") : r.error);
+    if (r.ok) { toast.success(tc("saved")); if (!doc) { await flushPending((r.data as { id: string }).id); router.replace(`/${locale}/hr/leave/${(r.data as { id: string }).id}`); } else router.refresh(); } else fail(r.fieldErrors ? Object.values(r.fieldErrors).flat().join("; ") : r.error);
   };
   const onEmployee = (v: string | null) => { setF({ ...f, employeeId: v ?? "" }); if (!doc && v) router.replace(`/${locale}/hr/leave/new?employeeId=${v}`); };
   return (
@@ -62,6 +72,7 @@ export function LeaveEditor({ doc, employees, types, defaultEmployeeId, balances
           {doc?.approvals?.length ? <div className="pt-2 border-t"><div className="font-medium mb-1">{t("leave.decisions")}</div><ul className="space-y-0.5 text-xs">{doc.approvals.map((a, i) => <li key={i}>#{a.step} {ar ? a.user.nameAr : a.user.nameEn}: <Badge variant={a.decision === "APPROVED" ? "success" : "destructive"}>{a.decision}</Badge> <span className="text-muted-foreground" dir="ltr">{formatDateTime(a.at, locale)}</span>{a.comment ? ` — ${a.comment}` : ""}</li>)}</ul></div> : null}
         </CardContent></Card>
       </div>
+      {(doc || canAttach.upload) && <div className="mt-4"><AttachmentsPanel entityType="LeaveRequest" entityId={doc?.id ?? null} items={doc ? attachments : []} canUpload={canAttach.upload} canDelete={canAttach.delete} pending={pending} /></div>}
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {editable && (perms.create || perms.edit) && <Button onClick={save} disabled={busy !== null || !f.employeeId || !f.leaveTypeId || days <= 0}>{busy === "save" ? <Loader2 className="animate-spin" /> : <Save />} {tc("save")}</Button>}
         {doc && editable && <ConfirmButton title={tc("submit")} description={t("leave.submitHint")} action={() => submitLeaveAction(doc.id)} variant="secondary"><Send /> {tc("submit")}</ConfirmButton>}

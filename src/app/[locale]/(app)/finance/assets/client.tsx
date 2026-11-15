@@ -117,6 +117,7 @@ export function AssetsClient({ data, columns, categories, categoryOptions, looku
           saveAction={saveCategoryAction}
           removeAction={removeCategoryAction}
           can={can}
+          attach={{ entityType: "FixedAsset", canUpload: can.create || can.edit, canDelete: can.edit || can.delete }}
           dialogSize="lg"
         />
         <span className="hidden"><Trash2 /></span>

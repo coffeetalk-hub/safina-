@@ -5,8 +5,7 @@ import { pricingData } from "@/modules/sales/pricing";
 import { getQuotation } from "@/modules/sales/quotations";
 import { convertQuotationAction, quotationStatusAction, saveQuotationAction } from "@/modules/sales/actions";
 import { DocEditor, type DocData, type Transition } from "@/components/finance/doc-editor";
-import { listForEntity } from "@/modules/foundation/attachments/service";
-import { can } from "@/core/auth/session";
+import { attachmentRights, listForEntity } from "@/modules/foundation/attachments/service";
 import { plain } from "@/components/data-table/types";
 
 export default async function QuotationPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ customerId?: string; opportunityId?: string }> }) {
@@ -14,7 +13,7 @@ export default async function QuotationPage({ params, searchParams }: { params: 
   const sp = await searchParams;
   const { session, locale, t, perms } = await salesPage("quotation");
   const [lk, pricing] = await Promise.all([financeLookups(session.companyId, locale), pricingData(session.companyId)]);
-  const canAttach = { upload: can(session, "foundation.attachment:create"), delete: can(session, "foundation.attachment:delete") };
+  const canAttach = attachmentRights(session, "Quotation");
   const st = (status: "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "CANCELLED" | "DRAFT") => async (qid: string) => { "use server"; return quotationStatusAction({ id: qid, status }); };
   const transitions: Transition[] = [
     { key: "send", label: t("quotations.send"), action: st("SENT"), when: ["DRAFT"], variant: "secondary" },

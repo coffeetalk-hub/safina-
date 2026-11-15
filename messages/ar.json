@@ -50,7 +50,11 @@
     "notes": "ملاحظات",
     "optional": "اختياري",
     "attachments": "المرفقات",
-    "history": "السجل"
+    "history": "السجل",
+    "theme": "المظهر",
+    "themeLight": "فاتح",
+    "themeDark": "داكن",
+    "themeSystem": "حسب النظام"
   },
   "auth": {
     "signIn": "تسجيل الدخول",
@@ -744,7 +748,9 @@
       "title": "المرفقات",
       "upload": "رفع ملف",
       "dropHint": "PDF أو صور أو Excel أو Word حتى 15 م.ب",
-      "noFiles": "لا توجد مرفقات بعد"
+      "noFiles": "لا توجد مرفقات بعد",
+      "pending": "يُرفع عند الحفظ",
+      "pendingFailed": "تعذّر رفع بعض الملفات: {files}"
     },
     "notifications": {
       "title": "الإشعارات",

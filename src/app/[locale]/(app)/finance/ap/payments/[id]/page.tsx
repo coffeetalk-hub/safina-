@@ -4,8 +4,7 @@ import { financeLookups } from "@/modules/finance/_shared/lookups";
 import { getPayment, openBills } from "@/modules/finance/ap/payments";
 import { deletePaymentAction, openBillsAction, postPaymentAction, reversePaymentAction, savePaymentAction } from "@/modules/finance/ap/actions";
 import { SettlementEditor, type SettlementData } from "@/components/finance/settlement-editor";
-import { listForEntity } from "@/modules/foundation/attachments/service";
-import { can } from "@/core/auth/session";
+import { attachmentRights, listForEntity } from "@/modules/foundation/attachments/service";
 import { plain } from "@/components/data-table/types";
 
 export default async function PaymentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ vendorId?: string }> }) {
@@ -14,7 +13,7 @@ export default async function PaymentPage({ params, searchParams }: { params: Pr
   const { session, locale, perms } = await financePage("payment");
   const lk = await financeLookups(session.companyId, locale);
   const actions = { save: savePaymentAction, post: postPaymentAction, reverse: reversePaymentAction, remove: deletePaymentAction, loadOpen: openBillsAction };
-  const canAttach = { upload: can(session, "foundation.attachment:create"), delete: can(session, "foundation.attachment:delete") };
+  const canAttach = attachmentRights(session, "Payment");
   const mapOpen = (rows: Awaited<ReturnType<typeof openBills>>) => plain(rows).map((r) => ({ id: r.id, number: r.number, date: r.billDate, dueDate: r.dueDate, total: r.total, outstanding: r.outstanding, allocated: r.allocated, ref: r.vendorInvoiceNumber }));
   if (id === "new") {
     const open = sp.vendorId ? mapOpen(await openBills(session, sp.vendorId)) : [];

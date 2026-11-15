@@ -3,19 +3,61 @@ import { can, type AppSession } from "@/core/auth/session";
 import { ALLOWED_MIME, MAX_FILE_BYTES, buildStorageKey, sha256, storage } from "@/core/attachments/storage";
 import { orderByFrom, skipTake, type ColumnDef, type ListParams, type PagedResult } from "@/components/data-table/types";
 
-/** Who may open a file is decided by the record it is attached to, so an employee's scanned Iqama stays with HR. */
-const ENTITY_VIEW_PERMISSION: Record<string, string> = {
-  CustomerInvoice: "finance.invoice:view", Receipt: "finance.receipt:view", VendorBill: "finance.bill:view", Payment: "finance.payment:view",
-  JournalEntry: "finance.journal:view", FixedAsset: "finance.asset:view", Employee: "hr.employee:view",
-  PurchaseRequest: "purchasing.request:view", Rfq: "purchasing.rfq:view", PurchaseOrder: "purchasing.order:view",
-  Opportunity: "sales.opportunity:view", Quotation: "sales.quotation:view", SalesOrder: "sales.order:view",
+/**
+ * A file inherits the rights of the record it hangs on: anyone who may view the record may
+ * download its files, anyone who may create or edit it may attach to it. `foundation.attachment:*`
+ * is an administrator superset that still needs view rights on the record.
+ */
+const ENTITY_RESOURCE: Record<string, string[]> = {
+  CustomerInvoice: ["finance.invoice"], Receipt: ["finance.receipt"], VendorBill: ["finance.bill"], Payment: ["finance.payment"],
+  JournalEntry: ["finance.journal"], FixedAsset: ["finance.asset"], PettyCashVoucher: ["finance.pettyCash"], BankStatementLine: ["finance.bank"],
+  Customer: ["foundation.customer"], Vendor: ["foundation.vendor"], Item: ["foundation.item"], Employee: ["hr.employee", "foundation.employee"],
+  EmployeeContract: ["hr.contract"], EmployeeDocument: ["hr.document"], LeaveRequest: ["hr.leave"], EmployeeLoan: ["hr.loan"], EndOfServiceCalc: ["hr.eosb"], PayrollRun: ["hr.payroll"],
+  PurchaseRequest: ["purchasing.request"], Rfq: ["purchasing.rfq"], PurchaseOrder: ["purchasing.order"], VendorContract: ["purchasing.contract"], VendorEvaluation: ["purchasing.evaluation"],
+  Lead: ["sales.lead"], Opportunity: ["sales.opportunity"], Quotation: ["sales.quotation"], SalesOrder: ["sales.order"],
 };
-function mayAccessEntity(session: AppSession, entityType: string) {
-  return can(session, ENTITY_VIEW_PERMISSION[entityType] ?? "foundation.attachment:view");
+/** Records an employee may own personally: the personal resource grants rights on their own rows only. */
+const OWNED_BY_SELF: Record<string, string> = { LeaveRequest: "hr.self", EmployeeLoan: "hr.self", PurchaseRequest: "purchasing.myRequest" };
+
+export type AttachmentAct = "view" | "upload" | "delete";
+export type AttachmentRights = Record<AttachmentAct, boolean>;
+const RECORD_ACTIONS: Record<AttachmentAct, string[]> = { view: ["view"], upload: ["create", "edit"], delete: ["edit", "delete"] };
+const ADMIN_PERMISSION: Record<AttachmentAct, string> = { view: "foundation.attachment:view", upload: "foundation.attachment:create", delete: "foundation.attachment:delete" };
+
+function companyWide(session: AppSession, entityType: string, act: AttachmentAct) {
+  const resources = ENTITY_RESOURCE[entityType];
+  if (!resources) return can(session, ADMIN_PERMISSION[act]);
+  if (resources.some((r) => RECORD_ACTIONS[act].some((a) => can(session, `${r}:${a}`)))) return true;
+  return can(session, ADMIN_PERMISSION[act]) && resources.some((r) => can(session, `${r}:view`));
+}
+function selfScoped(session: AppSession, entityType: string, act: AttachmentAct) {
+  const self = OWNED_BY_SELF[entityType];
+  return Boolean(self) && RECORD_ACTIONS[act].some((a) => can(session, `${self}:${a}`));
+}
+/** Rights for page flags, without looking at a row. Self-service roles get true; ownership is checked again on every upload, download and delete. */
+export function attachmentRights(session: AppSession, entityType: string): AttachmentRights {
+  const r = (act: AttachmentAct) => companyWide(session, entityType, act) || selfScoped(session, entityType, act);
+  return { view: r("view"), upload: r("upload"), delete: r("delete") };
+}
+async function ownsRow(session: AppSession, entityType: string, entityId: string) {
+  const mine = async (employeeId: string | null) => Boolean(employeeId) && (await prisma.employee.count({ where: { id: employeeId as string, userId: session.userId } })) > 0;
+  if (entityType === "LeaveRequest") return mine((await prisma.leaveRequest.findFirst({ where: { id: entityId, companyId: session.companyId }, select: { employeeId: true } }))?.employeeId ?? null);
+  if (entityType === "EmployeeLoan") return mine((await prisma.employeeLoan.findFirst({ where: { id: entityId, companyId: session.companyId }, select: { employeeId: true } }))?.employeeId ?? null);
+  if (entityType === "PurchaseRequest") {
+    const row = await prisma.purchaseRequest.findFirst({ where: { id: entityId, companyId: session.companyId }, select: { createdById: true, requesterId: true } });
+    if (!row) return false;
+    return row.createdById === session.userId || (await mine(row.requesterId));
+  }
+  return false;
+}
+async function assertRight(session: AppSession, entityType: string, entityId: string, act: AttachmentAct) {
+  if (companyWide(session, entityType, act)) return;
+  if (selfScoped(session, entityType, act) && (await ownsRow(session, entityType, entityId))) return;
+  throw new Error(act === "view" ? "NOT_FOUND" : "FORBIDDEN");
 }
 
 export async function uploadAttachment(session: AppSession, input: { entityType: string; entityId: string; file: File; description?: string }) {
-  if (!mayAccessEntity(session, input.entityType)) throw new Error("FORBIDDEN");
+  await assertRight(session, input.entityType, input.entityId, "upload");
   if (!ALLOWED_MIME.has(input.file.type) || input.file.size > MAX_FILE_BYTES || input.file.size === 0) throw new Error("INVALID_FILE");
   const buf = Buffer.from(await input.file.arrayBuffer());
   const key = buildStorageKey(session.companyId, input.entityType, input.file.name);
@@ -37,24 +79,33 @@ export async function uploadAttachment(session: AppSession, input: { entityType:
 }
 
 export async function listForEntity(companyId: string, entityType: string, entityId: string) {
-  return prisma.attachment.findMany({ where: { companyId, entityType, entityId }, orderBy: { createdAt: "desc" }, include: { } });
+  return prisma.attachment.findMany({ where: { companyId, entityType, entityId }, orderBy: { createdAt: "desc" } });
+}
+/** Same list, checked against the caller's rights on the record (used from dialogs). */
+export async function listForEntityAs(session: AppSession, entityType: string, entityId: string) {
+  await assertRight(session, entityType, entityId, "view");
+  return listForEntity(session.companyId, entityType, entityId);
 }
 
 export async function getAttachment(session: AppSession, id: string) {
   const a = await prisma.attachment.findFirst({ where: { id, companyId: session.companyId } });
-  if (!a || !mayAccessEntity(session, a.entityType)) throw new Error("NOT_FOUND");
+  if (!a) throw new Error("NOT_FOUND");
+  await assertRight(session, a.entityType, a.entityId, "view");
   return { meta: a, data: await storage.get(a.storageKey) };
 }
 
 export async function removeAttachment(session: AppSession, id: string) {
   const a = await prisma.attachment.findFirst({ where: { id, companyId: session.companyId } });
-  if (!a || !mayAccessEntity(session, a.entityType)) throw new Error("NOT_FOUND");
-  return prisma.attachment.delete({ where: { id } });
+  if (!a) throw new Error("NOT_FOUND");
+  await assertRight(session, a.entityType, a.entityId, "delete");
+  await prisma.attachment.delete({ where: { id } });
+  await storage.remove(a.storageKey);
+  return { id };
 }
 
 export async function listAttachments(session: AppSession, p: ListParams): Promise<PagedResult<Record<string, unknown>>> {
   const where: Record<string, unknown> = { companyId: session.companyId };
-  if (!session.permissions.has("*")) where.AND = [{ entityType: { in: Object.keys(ENTITY_VIEW_PERMISSION).filter((t) => mayAccessEntity(session, t)) } }];
+  if (!session.permissions.has("*")) where.AND = [{ entityType: { in: Object.keys(ENTITY_RESOURCE).filter((t) => companyWide(session, t, "view")) } }];
   if (p.q) where.OR = [{ fileName: { contains: p.q, mode: "insensitive" } }, { entityType: { contains: p.q, mode: "insensitive" } }, { description: { contains: p.q, mode: "insensitive" } }];
   if (p.filters.entityType) where.entityType = p.filters.entityType;
   const [rows, total] = await Promise.all([

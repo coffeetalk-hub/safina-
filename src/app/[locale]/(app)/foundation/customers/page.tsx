@@ -57,6 +57,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: SP
         saveAction={saveCustomer}
         removeAction={removeCustomer}
         can={perms}
+        attach={{ entityType: "Customer", canUpload: perms.create || perms.edit, canDelete: perms.edit || perms.delete }}
         dialogSize="xl"
       />
     </>

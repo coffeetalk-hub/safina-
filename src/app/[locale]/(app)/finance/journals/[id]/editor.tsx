@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { AttachmentsPanel, type AttachmentItem } from "@/components/attachments/attachments-panel";
+import { usePendingAttachments } from "@/components/attachments/pending";
 import { DocStatus, PdfButtons } from "@/components/finance/doc-toolbar";
 import { PageHeader } from "@/components/shell/page-header";
 import { deleteJournalAction, postJournalAction, reverseJournalAction, saveJournalAction } from "@/modules/finance/journals/actions";
@@ -45,6 +46,14 @@ export function JournalEditor({ entry, lookups, can, attachments, canAttach }: {
 
   const update = (i: number, patch: Partial<Line>) => setLines((p) => p.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   const fail = (err: string) => toast.error(te.has(err) ? te(err) : err);
+  const pending = usePendingAttachments();
+  const ta = useTranslations("foundation.attachments");
+  const attachEntity = "JournalEntry";
+  const flushPending = async (id: string) => {
+    if (!pending.files.length) return;
+    const f = await pending.flush(attachEntity, id);
+    if (f.failed.length) toast.error(ta("pendingFailed", { files: f.failed.join(", ") }));
+  };
 
   const save = async () => {
     setBusy("save");
@@ -53,8 +62,10 @@ export function JournalEditor({ entry, lookups, can, attachments, canAttach }: {
     if (res.ok) {
       toast.success(tc("saved"));
       const d = res.data as { id: string };
-      if (!entry) router.replace(`/${locale}/finance/journals/${d.id}`);
-      else router.refresh();
+      if (!entry) {
+        await flushPending(d.id);
+        router.replace(`/${locale}/finance/journals/${d.id}`);
+      } else router.refresh();
     } else fail(res.fieldErrors ? Object.entries(res.fieldErrors).map(([k, v]) => `${k}: ${v[0]}`).join("; ") : res.error);
   };
   const post = async () => {
@@ -199,7 +210,7 @@ export function JournalEditor({ entry, lookups, can, attachments, canAttach }: {
               </Link>
             )}
           </div>
-          {entry && <AttachmentsPanel entityType="JournalEntry" entityId={entry.id} items={attachments} canUpload={canAttach.upload} canDelete={canAttach.delete} />}
+          {(entry || canAttach.upload) && <AttachmentsPanel entityType="JournalEntry" entityId={entry?.id ?? null} items={entry ? attachments : []} canUpload={canAttach.upload} canDelete={canAttach.delete} pending={pending} />}
         </div>
       </div>
     </>
