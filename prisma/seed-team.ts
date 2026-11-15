@@ -31,7 +31,7 @@ import { randomInt } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { nextDocumentNumber } from "../src/core/numbering";
-import type { Tx } from "../src/lib/prisma";
+import { transactionOptionsFromEnv, type Tx } from "../src/lib/prisma";
 
 type Access = "admin" | "finance" | "sales" | "purchasing" | "employee";
 
@@ -66,7 +66,7 @@ const COMPANY_ROLES: Record<Access, string[]> = {
 const DEMO_STAFF = ["admin", "finance", "sales", "hr", "purchasing", "employee"].map((u) => `${u}@thesailors.ai`);
 const DEMO_PORTAL = ["portal@nakheel.example"];
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient(transactionOptionsFromEnv());
 const PASSWORD_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 
 function generatePassword() {

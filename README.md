@@ -62,7 +62,7 @@ In production the server runs these itself, checking every minute (`src/core/cro
 To run one by hand: `GET /api/cron/<job>` with `Authorization: Bearer <CRON_SECRET>`. `/api/cron/tick` runs whatever is due.
 
 ## File storage
-Attachments and logos are stored under `STORAGE_DIR` (default `./storage`). On Railway this is a volume mounted at `/data`. On Netlify they are stored in the database (`STORAGE_DRIVER=database`, the default on serverless builds).
+Attachments and logos are stored under `STORAGE_DIR` (default `./storage`). On Railway this is a volume mounted at `/data`. On Netlify they are stored in the database (`STORAGE_DRIVER=database`, the default on serverless builds). `npm run neon -- <command>` runs a Prisma or seed command against the Neon database in `.env.local`.
 
 ## Finance notes
 - Posting rules live in `src/core/posting`; documents never write journal lines directly.

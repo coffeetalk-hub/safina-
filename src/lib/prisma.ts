@@ -2,6 +2,15 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { getContext } from "@/core/context";
 
 /**
+ * Interactive transactions time out after 5 s by default. PRISMA_TX_TIMEOUT_MS raises that for scripts run
+ * from a laptop against a remote database (`npm run neon` sets 2 minutes), where every query is a round trip.
+ */
+export function transactionOptionsFromEnv(): Prisma.PrismaClientOptions {
+  const timeout = Number(process.env.PRISMA_TX_TIMEOUT_MS);
+  return timeout > 0 ? { transactionOptions: { timeout, maxWait: Math.min(timeout, 30_000) } } : {};
+}
+
+/**
  * Models with soft-delete (deletedAt) support. Reads filter them out automatically,
  * `delete` becomes `update({deletedAt})`.
  */
@@ -44,6 +53,7 @@ function computeDiff(before: Record<string, unknown> | null, after: Record<strin
 function createClient() {
   const base = new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
+    ...transactionOptionsFromEnv(),
   });
 
   return base.$extends({

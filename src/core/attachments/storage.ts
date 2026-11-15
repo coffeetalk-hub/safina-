@@ -2,11 +2,12 @@ import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { prisma } from "@/lib/prisma";
-import { MAX_UPLOAD_BYTES, SERVERLESS_BUILD } from "@/lib/hosting";
+import { MAX_UPLOAD_BYTES } from "@/lib/hosting";
+import { storageDriver } from "./driver";
 
 /**
- * Storage abstraction. STORAGE_DRIVER picks where file bytes live:
- * - "disk" (default): STORAGE_DIR on a persistent disk (Docker, Railway volume).
+ * Storage abstraction. The driver (see ./driver.ts) picks where file bytes live:
+ * - "disk": STORAGE_DIR on a persistent disk (Docker, Railway volume).
  * - "database": the StoredFile table, for hosts without a lasting disk. Default on serverless builds (Netlify).
  */
 export interface StorageProvider {
@@ -50,7 +51,7 @@ class DatabaseStorage implements StorageProvider {
   }
 }
 
-export const STORAGE_DRIVER = (process.env.STORAGE_DRIVER || (SERVERLESS_BUILD ? "database" : "disk")) === "database" ? "database" : "disk";
+export const STORAGE_DRIVER = storageDriver();
 export const storage: StorageProvider = STORAGE_DRIVER === "database" ? new DatabaseStorage() : new LocalDiskStorage();
 
 export function buildStorageKey(companyId: string, entityType: string, fileName: string) {

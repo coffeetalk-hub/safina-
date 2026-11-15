@@ -9,13 +9,13 @@ import { bootstrapCompany } from "../src/modules/foundation/companies/service";
 import { installChartOfAccounts } from "./seed-data/install-coa";
 import { CUSTOMERS, VENDORS, ITEMS, EMPLOYEES, COST_CENTERS } from "./seed-data/master";
 import { ROLE_TEMPLATES } from "../src/core/rbac/permissions";
-import type { Tx } from "../src/lib/prisma";
+import { transactionOptionsFromEnv, type Tx } from "../src/lib/prisma";
 import { seedFinance } from "./seed-finance";
 import { seedSales } from "./seed-sales";
 import { seedPurchasing } from "./seed-purchasing";
 import { seedHr } from "./seed-hr";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient(transactionOptionsFromEnv());
 const PASSWORD = "Safina@2026";
 
 async function main() {

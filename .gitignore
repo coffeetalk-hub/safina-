@@ -48,3 +48,4 @@ storage/
 
 # team account passwords written by npm run db:seed:team
 *.local.csv
+.neon

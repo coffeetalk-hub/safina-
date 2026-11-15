@@ -1,11 +1,14 @@
 import { SERVERLESS_BUILD } from "@/lib/hosting";
+import { storageDriver } from "@/core/attachments/driver";
 
 /** Runs once when the server starts. */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs" || process.env.NODE_ENV !== "production") return;
 
-  const required = ["DATABASE_URL", "AUTH_SECRET", "AUTH_URL", "CRON_SECRET"];
-  if ((process.env.STORAGE_DRIVER || (SERVERLESS_BUILD ? "database" : "disk")) === "disk") required.push("STORAGE_DIR");
+  const required = ["DATABASE_URL", "AUTH_SECRET", "CRON_SECRET"];
+  // On Netlify, sign-in follows the request host and email links use the site URL Netlify provides.
+  if (!(SERVERLESS_BUILD && process.env.URL)) required.push("AUTH_URL");
+  if (storageDriver() === "disk") required.push("STORAGE_DIR");
   for (const name of required) {
     if (!process.env[name]) console.error(`[startup] ${name} is not set`);
   }

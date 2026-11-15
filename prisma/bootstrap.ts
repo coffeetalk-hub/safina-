@@ -9,10 +9,10 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { bootstrapCompany } from "../src/modules/foundation/companies/service";
-import type { Tx } from "../src/lib/prisma";
+import { transactionOptionsFromEnv, type Tx } from "../src/lib/prisma";
 import { installChartOfAccounts } from "./seed-data/install-coa";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient(transactionOptionsFromEnv());
 
 async function main() {
   const users = await prisma.user.count();
