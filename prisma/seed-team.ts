@@ -10,6 +10,8 @@
  *   self-service in the home company. Employees get self-service in the home company.
  * - Everyone gets an employee record in the home company (SAILORS, or TEAM_COMPANY_CODE)
  *   so they can punch in, request leave and see payslips. HR completes the details.
+ *   Shared logins such as the placeholder admin are marked employeeRecord: false.
+ * - When someone's access changes, their sessions end and they sign in again with the same password.
  *
  * Passwords: each new account gets its own random password, written to
  * TEAM_PASSWORDS_FILE (default ./team-passwords.local.csv, git-ignored). Run it again
@@ -36,9 +38,9 @@ import { transactionOptionsFromEnv, type Tx } from "../src/lib/prisma";
 type Access = "admin" | "finance" | "sales" | "purchasing" | "employee";
 
 /** Names are taken from the email addresses; correct them under Users and Employees. */
-const TEAM: { email: string; en: [string, string]; ar: [string, string]; access: Access }[] = [
+const TEAM: { email: string; en: [string, string]; ar: [string, string]; access: Access; employeeRecord?: false }[] = [
   { email: "abdulrahman.albaz@thesailors.ai", en: ["Abdulrahman", "Albaz"], ar: ["عبدالرحمن", "الباز"], access: "employee" },
-  { email: "ali.nasser@thesailors.ai", en: ["Ali", "Nasser"], ar: ["علي", "ناصر"], access: "admin" },
+  { email: "ali.nasser@thesailors.ai", en: ["Ali", "Nasser"], ar: ["علي", "ناصر"], access: "employee" },
   { email: "mohammed.almikail@thesailors.ai", en: ["Mohammed", "Almikail"], ar: ["محمد", "المكيل"], access: "employee" },
   { email: "faisal.aldossary@thesailors.ai", en: ["Faisal", "Aldossary"], ar: ["فيصل", "الدوسري"], access: "employee" },
   { email: "mayada.alsaadi@thesailors.ai", en: ["Mayada", "Alsaadi"], ar: ["ميادة", "السعدي"], access: "employee" },
@@ -51,6 +53,8 @@ const TEAM: { email: string; en: [string, string]; ar: [string, string]; access:
   { email: "najd.althumairy@thesailors.ai", en: ["Najd", "Althumairy"], ar: ["نجد", "الثميري"], access: "purchasing" },
   { email: "almaha.almahasher@thesailors.ai", en: ["Almaha", "Almahasher"], ar: ["المها", "المحاشر"], access: "employee" },
   { email: "mohammed.alnemer@thesailors.ai", en: ["Mohammed", "Alnemer"], ar: ["محمد", "النمر"], access: "employee" },
+  // Shared admin login until a named administrator takes it over. Not a person, so no employee record.
+  { email: "placeholder.admin@thesailors.ai", en: ["Placeholder", "Admin"], ar: ["مدير", "مؤقت"], access: "admin", employeeRecord: false },
 ];
 
 /** Roles held in every company. Non-admins also get EMPLOYEE in the home company. */
@@ -132,7 +136,9 @@ async function main() {
       const codes = [...COMPANY_ROLES[m.access], ...(c.id === home.id && m.access !== "admin" ? ["EMPLOYEE"] : [])];
       if (codes.length) wanted.set(c.id, codes);
     }
-    await prisma.userCompany.deleteMany({ where: { userId: user.id, companyId: { notIn: [...wanted.keys()] } } });
+    let accessChanges = existing && existing.isSuperAdmin !== access.isSuperAdmin ? 1 : 0;
+    const leftCompanies = await prisma.userCompany.deleteMany({ where: { userId: user.id, companyId: { notIn: [...wanted.keys()] } } });
+    accessChanges += leftCompanies.count;
     for (const [companyId, codes] of wanted) {
       const uc = await prisma.userCompany.upsert({
         where: { userId_companyId: { userId: user.id, companyId } },
@@ -140,15 +146,22 @@ async function main() {
         update: { isDefault: companyId === home.id },
       });
       const ids = codes.map((code) => roleId(companyId, code));
-      await prisma.userCompanyRole.deleteMany({ where: { userCompanyId: uc.id, roleId: { notIn: ids } } });
+      const dropped = await prisma.userCompanyRole.deleteMany({ where: { userCompanyId: uc.id, roleId: { notIn: ids } } });
+      const kept = await prisma.userCompanyRole.count({ where: { userCompanyId: uc.id, roleId: { in: ids } } });
+      accessChanges += dropped.count + ids.length - kept;
       for (const id of ids) {
         await prisma.userCompanyRole.upsert({ where: { userCompanyId_roleId: { userCompanyId: uc.id, roleId: id } }, create: { userCompanyId: uc.id, roleId: id }, update: {} });
       }
     }
 
+    // Super admin rights travel in the sign-in token, so a changed account is signed out everywhere.
+    // The password stays the same; the person signs in again and gets the new access.
+    const accessChanged = Boolean(existing && !password && accessChanges > 0);
+    if (accessChanged) await prisma.user.update({ where: { id: user.id }, data: { passwordChangedAt: new Date() } });
+
     // Employee record in the home company, linked to the login (punch in, leave, payslips).
-    let employee = await prisma.employee.findFirst({ where: { userId: user.id } });
-    if (!employee) {
+    let employee = m.employeeRecord === false ? null : await prisma.employee.findFirst({ where: { userId: user.id } });
+    if (!employee && m.employeeRecord !== false) {
       const unlinked = await prisma.employee.findFirst({ where: { companyId: home.id, email, userId: null, deletedAt: null } });
       employee = unlinked
         ? await prisma.employee.update({ where: { id: unlinked.id }, data: { userId: user.id } })
@@ -165,9 +178,9 @@ async function main() {
     }
 
     rows.push({
-      email, name: nameEn, access: m.access, employee: employee.code,
+      email, name: nameEn, access: m.access, employee: employee?.code ?? "none",
       password: password ?? saved.get(email) ?? "",
-      status: !existing ? "created" : password ? "password reset" : "updated",
+      status: !existing ? "created" : password ? "password reset" : accessChanged ? "access changed, signed out" : "updated",
     });
   }
 
@@ -184,7 +197,7 @@ async function main() {
     console.log(`[team] Demo logins switched off: ${staff.count} staff, ${portal.count} portal.`);
   }
 
-  console.table(rows.map((r) => ({ email: r.email, access: r.access, employee: r.employee, status: r.status, password: r.status === "updated" ? "(unchanged)" : r.password })));
+  console.table(rows.map((r) => ({ email: r.email, access: r.access, employee: r.employee, status: r.status, password: r.status === "created" || r.status === "password reset" ? r.password : "(unchanged)" })));
   console.log(`[team] ${rows.length} accounts ready (home company: ${home.nameEn}). Passwords saved to ${passwordFile}`);
 }
 
