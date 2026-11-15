@@ -126,6 +126,8 @@ The full list of remaining work is in `docs/HANDOFF.md`.
 - Opening-balance import posts to the first day of the latest OPEN fiscal year.
 - Multi-currency: rates are per document (manual) with a rate table lookup helper; FX revaluation entries are not automated.
 - Hosting: Railway, see `docs/DEPLOY-RAILWAY.md`. One service with a volume for files; background jobs run in-process.
+- Hosting: Netlify, see `docs/NETLIFY.md` (prepared, not yet deployed). `netlify.toml` sets `NEXT_PUBLIC_SERVERLESS=true`, which switches files to the database (`StoredFile`), caps uploads at 4 MB (Netlify request limit) and replaces the in-process scheduler with the `cron-tick` scheduled function. A local production build with that flag passes and the proxy trace has no native modules. Netlify's own build is not verified yet.
+- Team accounts: `npm run db:seed:team` (14 people from `prisma/seed-team.ts`: 3 super admins, finance, sales, purchasing, 8 employees), each with a linked employee record in SAILORS. Names come from the email addresses and the employee records only have names, so HR completes gender, nationality, ID, hire date and salary.
 - Email: set `RESEND_API_KEY` or `SMTP_HOST`. Without one, mail is marked sent in development and stays queued in production.
 - Hijri dates: display helper exists (`formatHijri`), not yet surfaced in UI.
 - HR: GOSI rates, leave entitlements, sick-pay tiers and EOSB basis are seeded with the published rules but **must be verified by HR/legal** before production. The WPS file is a generic CSV (adapt column order to your bank). End-of-service accrual (monthly provision) is not automated — the settlement posts the full expense on exit. Payroll currently supports one run per period per branch.

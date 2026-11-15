@@ -747,10 +747,11 @@
     "attachments": {
       "title": "Attachments",
       "upload": "Upload file",
-      "dropHint": "PDF, images, Excel or Word up to 15 MB",
+      "dropHint": "PDF, images, Excel or Word up to {mb} MB",
       "noFiles": "No attachments yet",
       "pending": "Uploads when you save",
-      "pendingFailed": "Some files were not uploaded: {files}"
+      "pendingFailed": "Some files were not uploaded: {files}",
+      "tooLarge": "{files}: larger than {mb} MB, not uploaded"
     },
     "notifications": {
       "title": "Notifications",

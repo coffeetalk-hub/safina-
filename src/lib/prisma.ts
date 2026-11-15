@@ -14,7 +14,7 @@ const SOFT_DELETE_MODELS = new Set<string>([
 /** Models we never audit (noise or self-referential). */
 const NO_AUDIT_MODELS = new Set<string>([
   "AuditLog", "Notification", "EmailOutbox", "UserTablePreference", "DocumentSequence", "ImportJob",
-  "PasswordResetToken", "RateLimit", "ScheduledJob",
+  "PasswordResetToken", "RateLimit", "ScheduledJob", "StoredFile",
 ]);
 
 const AUDITED_ACTIONS = new Set(["create", "update", "delete", "upsert"]);

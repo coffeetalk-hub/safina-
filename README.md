@@ -2,7 +2,7 @@
 
 Bilingual (Arabic-first, RTL) web ERP for Saudi SMEs. Next.js 16 · TypeScript · Tailwind · shadcn/ui · Prisma/PostgreSQL · NextAuth · next-intl.
 
-See `ARCHITECTURE.md` for the design, `PROGRESS.md` for status, `docs/DEPLOY-RAILWAY.md` to deploy and `docs/HANDOFF.md` for the remaining work.
+See `ARCHITECTURE.md` for the design, `PROGRESS.md` for status, `docs/DEPLOY-RAILWAY.md` or `docs/NETLIFY.md` to deploy and `docs/HANDOFF.md` for the remaining work.
 
 ## First run (Windows / PowerShell, Node 24)
 
@@ -48,6 +48,7 @@ Customer portal (`/ar/portal`): `portal@nakheel.example` / `Portal@2026`
 | `npm run db:migrate:dev` | Create a new migration after editing `prisma/schema.prisma` |
 | `npm run db:seed` | Idempotent demo seed (refuses to run in production) |
 | `npm run db:bootstrap` | First super admin and company for a real deployment, from `BOOTSTRAP_*` variables |
+| `npm run db:seed:team` | The real team's accounts and roles from `prisma/seed-team.ts`, with random passwords saved to `team-passwords.local.csv` (git-ignored). `-- --lock-demo-logins` switches off the demo accounts on a public site |
 | `npm run db:studio` | Prisma Studio |
 
 ## Scheduled jobs
@@ -61,7 +62,7 @@ In production the server runs these itself, checking every minute (`src/core/cro
 To run one by hand: `GET /api/cron/<job>` with `Authorization: Bearer <CRON_SECRET>`. `/api/cron/tick` runs whatever is due.
 
 ## File storage
-Attachments and logos are stored under `STORAGE_DIR` (default `./storage`). On Railway this is a volume mounted at `/data`.
+Attachments and logos are stored under `STORAGE_DIR` (default `./storage`). On Railway this is a volume mounted at `/data`. On Netlify they are stored in the database (`STORAGE_DRIVER=database`, the default on serverless builds).
 
 ## Finance notes
 - Posting rules live in `src/core/posting`; documents never write journal lines directly.

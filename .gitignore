@@ -45,3 +45,6 @@ next-env.d.ts
 .env
 storage/
 *.tsbuildinfo
+
+# team account passwords written by npm run db:seed:team
+*.local.csv

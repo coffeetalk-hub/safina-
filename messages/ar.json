@@ -747,10 +747,11 @@
     "attachments": {
       "title": "المرفقات",
       "upload": "رفع ملف",
-      "dropHint": "PDF أو صور أو Excel أو Word حتى 15 م.ب",
+      "dropHint": "PDF أو صور أو Excel أو Word حتى {mb} م.ب",
       "noFiles": "لا توجد مرفقات بعد",
       "pending": "يُرفع عند الحفظ",
-      "pendingFailed": "تعذّر رفع بعض الملفات: {files}"
+      "pendingFailed": "تعذّر رفع بعض الملفات: {files}",
+      "tooLarge": "{files}: أكبر من {mb} م.ب، لم يُرفع"
     },
     "notifications": {
       "title": "الإشعارات",

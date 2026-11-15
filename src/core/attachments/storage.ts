@@ -1,8 +1,14 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
+import { prisma } from "@/lib/prisma";
+import { MAX_UPLOAD_BYTES, SERVERLESS_BUILD } from "@/lib/hosting";
 
-/** Storage abstraction. Local disk now; swap for S3-compatible later. */
+/**
+ * Storage abstraction. STORAGE_DRIVER picks where file bytes live:
+ * - "disk" (default): STORAGE_DIR on a persistent disk (Docker, Railway volume).
+ * - "database": the StoredFile table, for hosts without a lasting disk. Default on serverless builds (Netlify).
+ */
 export interface StorageProvider {
   put(key: string, data: Buffer, mime: string): Promise<void>;
   get(key: string): Promise<Buffer>;
@@ -29,7 +35,23 @@ class LocalDiskStorage implements StorageProvider {
   }
 }
 
-export const storage: StorageProvider = new LocalDiskStorage();
+class DatabaseStorage implements StorageProvider {
+  async put(key: string, data: Buffer, mime: string) {
+    const bytes = new Uint8Array(data);
+    await prisma.storedFile.upsert({ where: { key }, create: { key, mimeType: mime, size: bytes.length, data: bytes }, update: { mimeType: mime, size: bytes.length, data: bytes } });
+  }
+  async get(key: string) {
+    const row = await prisma.storedFile.findUnique({ where: { key }, select: { data: true } });
+    if (!row) throw new Error("NOT_FOUND");
+    return Buffer.from(row.data);
+  }
+  async remove(key: string) {
+    await prisma.storedFile.deleteMany({ where: { key } });
+  }
+}
+
+export const STORAGE_DRIVER = (process.env.STORAGE_DRIVER || (SERVERLESS_BUILD ? "database" : "disk")) === "database" ? "database" : "disk";
+export const storage: StorageProvider = STORAGE_DRIVER === "database" ? new DatabaseStorage() : new LocalDiskStorage();
 
 export function buildStorageKey(companyId: string, entityType: string, fileName: string) {
   const ext = path.extname(fileName).toLowerCase().slice(0, 10);
@@ -46,4 +68,5 @@ export const ALLOWED_MIME = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword", "text/csv", "text/plain",
 ]);
-export const MAX_FILE_BYTES = 15 * 1024 * 1024;
+/** See MAX_UPLOAD_MB in src/lib/hosting.ts: 15 MB, or 4 MB on serverless builds. */
+export const MAX_FILE_BYTES = MAX_UPLOAD_BYTES;

@@ -20,7 +20,8 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
-    "db:bootstrap": "tsx prisma/bootstrap.ts"
+    "db:bootstrap": "tsx prisma/bootstrap.ts",
+    "db:seed:team": "tsx prisma/seed-team.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

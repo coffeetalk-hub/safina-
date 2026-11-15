@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { listAttachmentsAction, removeAttachmentAction, uploadAttachmentAction } from "@/modules/foundation/attachments/actions";
 import { formatDateTime } from "@/lib/dates";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/hosting";
 import { cn } from "@/lib/utils";
 import type { PendingAttachments } from "./pending";
 
@@ -47,8 +48,15 @@ export function AttachmentsPanel({ entityType, entityId, items, canUpload, canDe
   const queued = pending?.files ?? [];
   const count = items.length + queued.length;
 
-  const upload = async (files: FileList | null) => {
-    if (!files?.length) return;
+  const upload = async (list: FileList | null) => {
+    if (!list?.length) return;
+    const tooBig = Array.from(list).filter((f) => f.size > MAX_UPLOAD_BYTES);
+    if (tooBig.length) toast.error(t("tooLarge", { files: tooBig.map((f) => f.name).join(", "), mb: MAX_UPLOAD_MB }));
+    const files = Array.from(list).filter((f) => f.size <= MAX_UPLOAD_BYTES);
+    if (!files.length) {
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
     if (!entityId) {
       pending?.add(files, desc);
       setDesc("");
@@ -56,7 +64,7 @@ export function AttachmentsPanel({ entityType, entityId, items, canUpload, canDe
       return;
     }
     setLoading(true);
-    for (const f of Array.from(files)) {
+    for (const f of files) {
       const fd = new FormData();
       fd.set("entityType", entityType);
       fd.set("entityId", entityId);
@@ -88,7 +96,7 @@ export function AttachmentsPanel({ entityType, entityId, items, canUpload, canDe
           <Button type="button" size="sm" variant="outline" disabled={loading} onClick={() => fileRef.current?.click()}>
             {loading ? <Loader2 className="animate-spin" /> : <Upload />} {t("upload")}
           </Button>
-          <span className="text-xs text-muted-foreground">{t("dropHint")}</span>
+          <span className="text-xs text-muted-foreground">{t("dropHint", { mb: MAX_UPLOAD_MB })}</span>
         </div>
       )}
       {count === 0 ? (

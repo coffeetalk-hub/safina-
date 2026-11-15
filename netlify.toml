@@ -1,0 +1,29 @@
+# Netlify builds Safina with its own Next.js runtime (detected automatically, no plugin entry needed).
+# Secrets go in the Netlify UI (Site configuration > Environment variables) with the Builds and Functions
+# scopes: values set in this file reach the build but not the running functions. Steps: docs/NETLIFY.md
+
+[build]
+  # Migrations use the direct (unpooled) database URL when one is set; Neon's pooler cannot run them.
+  command = "npx prisma generate && DATABASE_URL=\"${DATABASE_URL_UNPOOLED:-$DATABASE_URL}\" npx prisma migrate deploy && npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+  # Inlined into the app by next build: files kept in the database, 4 MB uploads, no in-process scheduler.
+  NEXT_PUBLIC_SERVERLESS = "true"
+
+# Previews and branch deploys share the production database, so only production deploys migrate it.
+[context.deploy-preview]
+  command = "npx prisma generate && npm run build"
+
+[context.branch-deploy]
+  command = "npx prisma generate && npm run build"
+
+[functions]
+  # Read from disk by the server at runtime: PDF fonts and the Prisma engine built for AWS Lambda.
+  included_files = [
+    "public/fonts/*.ttf",
+    "node_modules/.prisma/client/libquery_engine-rhel-openssl-3.0.x.so.node",
+    "node_modules/.prisma/client/schema.prisma",
+  ]
