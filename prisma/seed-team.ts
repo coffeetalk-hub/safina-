@@ -171,7 +171,7 @@ async function main() {
                 companyId: home.id,
                 code: await nextDocumentNumber(tx as unknown as Tx, home.id, "EMPLOYEE"),
                 firstNameEn: m.en[0], lastNameEn: m.en[1], firstNameAr: m.ar[0], lastNameAr: m.ar[1],
-                email, branchId: mainBranch?.id ?? null, status: "ACTIVE",
+                email, userId: user.id, branchId: mainBranch?.id ?? null, status: "ACTIVE",
               },
             }),
           );
