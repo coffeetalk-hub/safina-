@@ -29,6 +29,7 @@ const credentialsSchema = z.object({
   password: z.string().min(1),
 });
 
+/** Customer-portal accounts only; staff accounts are not locked. */
 const MAX_FAILED = 5;
 const LOCK_MINUTES = 15;
 const IP_ATTEMPTS = 30;
@@ -93,21 +94,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           await recordAttempt(ip, IP_WINDOW_SECONDS);
           return null;
         }
-        if (user.lockedUntil && user.lockedUntil > new Date()) {
-          await recordAttempt(ip, IP_WINDOW_SECONDS);
-          return null;
-        }
+        // Staff accounts are never locked by wrong passwords (owner's decision, 2026-11-18);
+        // guessing is held back by the per-network limit above. The count is kept for diagnosis only.
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) {
           await recordAttempt(ip, IP_WINDOW_SECONDS);
-          const failed = user.failedLogins + 1;
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              failedLogins: failed,
-              lockedUntil: failed >= MAX_FAILED ? new Date(Date.now() + LOCK_MINUTES * 60_000) : null,
-            },
-          });
+          await prisma.user.update({ where: { id: user.id }, data: { failedLogins: { increment: 1 } } });
           return null;
         }
         await prisma.user.update({

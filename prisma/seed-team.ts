@@ -49,7 +49,7 @@ const TEAM: { email: string; en: [string, string]; ar: [string, string]; access:
   { email: "saleem.bitar@thesailors.ai", en: ["Saleem", "Bitar"], ar: ["سليم", "بيطار"], access: "admin" },
   { email: "abdulrahman.albuhason@thesailors.ai", en: ["Abdulrahman", "Albuhason"], ar: ["عبدالرحمن", "البوحسون"], access: "sales" },
   { email: "muhammad.anwar@thesailors.ai", en: ["Muhammad", "Anwar"], ar: ["محمد", "أنور"], access: "finance" },
-  { email: "shahad.almulla@thesailors.ai", en: ["Shahad", "Almulla"], ar: ["شهد", "الملا"], access: "employee" },
+  { email: "shahad.almulla@thesailors.ai", en: ["Shahad", "Almulla"], ar: ["شهد", "الملا"], access: "sales" },
   { email: "shahad.alsonaiyen@thesailors.ai", en: ["Shahad", "Alsonaiyen"], ar: ["شهد", "السنيين"], access: "employee" },
   { email: "najd.althumairy@thesailors.ai", en: ["Najd", "Althumairy"], ar: ["نجد", "الثميري"], access: "purchasing" },
   { email: "almaha.almahasher@thesailors.ai", en: ["Almaha", "Almahasher"], ar: ["المها", "المحاشر"], access: "employee" },
