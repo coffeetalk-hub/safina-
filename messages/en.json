@@ -167,7 +167,8 @@
     "clearFilters": "Clear filters",
     "all": "All",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "sort": "Sort"
   },
   "errors": {
     "VALIDATION": "Please correct the highlighted fields",
@@ -212,7 +213,7 @@
     "INVALID_TRANSITION": "This action is not allowed in the document's current status",
     "QUOTE_NOT_RECEIVED": "No quote has been recorded for this vendor",
     "EMPLOYEE_REQUIRED": "Employee is required",
-    "NO_EMPLOYEE_RECORD": "Your user account is not linked to an employee record. Ask HR to link it.",
+    "NO_EMPLOYEE_RECORD": "Your login is not linked to an employee record. Ask an administrator to link it under Administration → Users.",
     "END_DATE_REQUIRED": "Fixed-term contracts need an end date",
     "LEAVE_EXCEEDS_MAX": "Exceeds the maximum days allowed per request for this leave type",
     "LEAVE_OVERLAP": "Overlaps another pending or approved leave",
@@ -223,7 +224,9 @@
     "EOSB_EXISTS": "An open end-of-service settlement already exists for this employee",
     "pageNotFound": "This page does not exist or you do not have access to it.",
     "COMPANY_VAT_REQUIRED": "Add the company VAT number before posting tax invoices.",
-    "PUNCH_ON_LEAVE": "You're on approved leave today, so you can't punch in."
+    "PUNCH_ON_LEAVE": "You're on approved leave today, so you can't punch in.",
+    "EMPLOYEE_ALREADY_LINKED": "That employee record is already linked to another login",
+    "EMPLOYEE_IN_OTHER_COMPANY": "This login already has an employee record in another company. Switch to that company to use or change it."
   },
   "fields": {
     "code": "Code",
@@ -684,7 +687,11 @@
       "edit": "Edit user",
       "resetPassword": "Reset password",
       "passwordHint": "Leave blank to keep the current password",
-      "companyRoles": "Companies & roles"
+      "companyRoles": "Companies & roles",
+      "employeeRecord": "Employee record (My HR)",
+      "employeeNone": "None",
+      "employeeCreate": "Create a new employee record",
+      "employeeHint": "The employee record this person uses for My HR: punch in, leave and payslips."
     },
     "roles": {
       "title": "Roles & permissions",
@@ -1292,7 +1299,10 @@
       "new": "New purchase request",
       "approved": "Request approved",
       "toRfq": "Create RFQ",
-      "toOrder": "Create purchase order"
+      "toOrder": "Create purchase order",
+      "noItems": "Add at least one item with a description before saving",
+      "itemN": "Item {n}",
+      "addItem": "Add item"
     },
     "rfq": {
       "title": "Requests for quotation",
@@ -1647,13 +1657,16 @@
     },
     "self": {
       "title": "My HR",
-      "noRecord": "Your user account is not linked to an employee record. Ask HR to link it from Employees → User account.",
+      "noRecord": "Your login is not linked to an employee record yet. Ask an administrator to link it under Administration → Users.",
       "thisMonth": "This month",
       "presentDays": "present days",
       "myLeave": "My leave requests",
       "myPayslips": "My payslips",
       "myAttendance": "My attendance",
-      "myDocs": "My documents"
+      "myDocs": "My documents",
+      "setupHint": "Your login has no employee record in this company yet. Set one up to punch in, request leave and see your payslips here.",
+      "setup": "Set up my employee record",
+      "setupDone": "Your employee record is ready"
     },
     "employeeCount": "Employees"
   },
@@ -1684,5 +1697,55 @@
     "hoursMinutes": "{h}h {m}m",
     "forgotPunchOut": "You didn't punch out on {day}. Ask HR to correct that day.",
     "minutes": "{m} min"
+  },
+  "validation": {
+    "REQUIRED": "{field} is required",
+    "TOO_SHORT": "{field} must be at least {min} characters",
+    "TOO_LONG": "{field} can be at most {max} characters",
+    "INVALID_EMAIL": "{field} is not a valid email address",
+    "INVALID_NUMBER": "{field} must be a number",
+    "INVALID_DATE": "{field} is not a valid date",
+    "INVALID_OPTION": "Choose one of the available options for {field}",
+    "INVALID": "{field} is not valid. Please check it and try again",
+    "POSITIVE": "{field} must be greater than zero",
+    "MIN_VALUE": "{field} must be {min} or more",
+    "MAX_VALUE": "{field} must be {max} or less",
+    "MIN_ITEMS": "{field}: choose at least {min}",
+    "MAX_ITEMS": "{field}: choose no more than {max}",
+    "NO_LINES": "Add at least one item before saving",
+    "line": "Line {n}",
+    "more": "…and {count} more to correct",
+    "fields": {
+      "lines": "Items",
+      "quantity": "Quantity",
+      "unitPrice": "Unit price",
+      "estimatedPrice": "Estimated price",
+      "discountPct": "Discount %",
+      "requestDate": "Date",
+      "neededBy": "Needed by",
+      "requester": "Requester",
+      "purpose": "Purpose",
+      "priority": "Priority",
+      "reason": "Reason",
+      "employee": "Employee",
+      "leaveType": "Leave type",
+      "vendor": "Vendor",
+      "vendorIds": "Vendors",
+      "customer": "Customer",
+      "account": "Account",
+      "debit": "Debit",
+      "credit": "Credit",
+      "installments": "Installments",
+      "item": "Item",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "dueDate": "Due date",
+      "issueDate": "Date",
+      "paidOn": "Date",
+      "payee": "Paid to",
+      "basic": "Basic salary",
+      "roleIds": "Roles",
+      "companyIds": "Companies"
+    }
   }
 }

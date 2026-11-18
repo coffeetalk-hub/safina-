@@ -36,7 +36,7 @@ export function PortalHome({ data, labels }: { data: Data; labels: { title: stri
       <Card>
         <CardHeader><CardTitle className="text-base">{t("invoices")}</CardTitle></CardHeader>
         <CardContent>
-          <Table>
+          <Table stack="flat">
             <TableHeader><TableRow><TableHead>{t("number")}</TableHead><TableHead>{t("date")}</TableHead><TableHead>{t("dueDate")}</TableHead><TableHead className="text-end">{t("total")}</TableHead><TableHead className="text-end">{t("balance")}</TableHead><TableHead>{t("status")}</TableHead><TableHead /></TableRow></TableHeader>
             <TableBody>
               {data.invoices.length === 0 && <TableRow><TableCell colSpan={7} className="h-16 text-center text-muted-foreground">—</TableCell></TableRow>}
@@ -58,7 +58,7 @@ export function PortalHome({ data, labels }: { data: Data; labels: { title: stri
       <Card>
         <CardHeader><CardTitle className="text-base">{t("statement")}</CardTitle></CardHeader>
         <CardContent>
-          <Table>
+          <Table stack="flat">
             <TableHeader><TableRow><TableHead>{t("date")}</TableHead><TableHead>{t("type")}</TableHead><TableHead>{t("number")}</TableHead><TableHead className="text-end">{t("debit")}</TableHead><TableHead className="text-end">{t("credit")}</TableHead><TableHead className="text-end">{t("balance")}</TableHead></TableRow></TableHeader>
             <TableBody>
               <TableRow className="bg-muted/30 font-medium"><TableCell colSpan={5}>{t("openingBalance")}</TableCell><TableCell className="text-end tabular-nums" dir="ltr">{formatMoney(data.statement.opening, locale)}</TableCell></TableRow>

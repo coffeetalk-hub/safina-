@@ -94,7 +94,7 @@ export function PriceListsClient({ lists, lookups, can }: { lists: PL[]; lookups
           <Card>
             <CardHeader><CardTitle className="text-base">{t("priceLists.specialPrices")}</CardTitle></CardHeader>
             <CardContent>
-              <Table>
+              <Table stack="flat">
                 <TableHeader><TableRow><TableHead>{t("item")}</TableHead><TableHead className="text-end w-40">{t("price")}</TableHead><TableHead className="text-end w-32">{t("discPct")}</TableHead><TableHead className="w-10" /></TableRow></TableHeader>
                 <TableBody>
                   {custPrices.map((p, i) => (
@@ -132,7 +132,7 @@ export function PriceListsClient({ lists, lookups, can }: { lists: PL[]; lookups
             </div>
           </div>
           <div className="max-h-[45vh] overflow-auto rounded-md border">
-            <Table>
+            <Table stack="flat">
               <TableHeader className="sticky top-0 bg-background"><TableRow><TableHead>{t("item")}</TableHead><TableHead className="text-end w-32">{t("listPrice")}</TableHead><TableHead className="text-end w-36">{t("price")}</TableHead><TableHead className="text-end w-28">{t("minQty")}</TableHead><TableHead className="w-10" /></TableRow></TableHeader>
               <TableBody>
                 {items.map((it, i) => (

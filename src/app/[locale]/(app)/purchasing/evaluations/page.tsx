@@ -39,7 +39,7 @@ export default async function EvaluationsPage({ searchParams }: { searchParams: 
         <Card>
           <CardHeader><CardTitle className="text-base">{t("evaluations.scorecard")}</CardTitle></CardHeader>
           <CardContent>
-            <Table>
+            <Table stack="flat">
               <TableHeader><TableRow><TableHead>{tf("code")}</TableHead><TableHead>{t("vendor")}</TableHead><TableHead className="text-end">{t("evaluations.count")}</TableHead><TableHead className="text-end">{t("evaluations.avgScore")}</TableHead><TableHead className="text-end">{t("reports.bills")}</TableHead><TableHead className="text-end">{t("evaluations.spend")}</TableHead></TableRow></TableHeader>
               <TableBody>
                 {scorecard.map((v) => (

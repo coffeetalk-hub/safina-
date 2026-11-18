@@ -76,7 +76,7 @@ export function FiscalClient({ years, can }: { years: Year[]; can: { create: boo
             </CardAction>
           </CardHeader>
           <CardContent>
-            <Table>
+            <Table stack="flat">
               <TableHeader>
                 <TableRow>
                   <TableHead>#</TableHead>

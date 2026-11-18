@@ -13,10 +13,10 @@ export default async function ProfilePage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>{locale === "ar" ? session.nameAr : session.nameEn}</CardTitle>
+            <CardTitle className="leading-snug [overflow-wrap:anywhere]">{locale === "ar" ? session.nameAr : session.nameEn}</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-2 text-sm">
-            <div className="text-muted-foreground">{tf("email")}</div><div dir="ltr">{session.email}</div>
+          <CardContent className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+            <div className="text-muted-foreground">{tf("email")}</div><div dir="ltr" className="break-all rtl:text-end">{session.email}</div>
             <div className="text-muted-foreground">{tf("locale")}</div><div>{session.locale}</div>
             <div className="text-muted-foreground">{tf("companies")}</div><div>{session.companyIds.length}</div>
             <div className="text-muted-foreground">{tf("permissions")}</div><div>{session.permissions.has("*") ? "*" : session.permissions.size}</div>

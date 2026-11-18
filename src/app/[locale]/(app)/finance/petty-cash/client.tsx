@@ -18,6 +18,7 @@ import type { ColumnDef, FilterDef, PagedResult } from "@/components/data-table/
 import { EntityDialog } from "@/components/forms/entity-dialog";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { useToast } from "@/components/ui/toast";
+import { useActionError } from "@/lib/action-errors";
 import { DocStatus } from "@/components/finance/doc-toolbar";
 import { DialogAttachments } from "@/components/attachments/attachments-panel";
 import { usePendingAttachments } from "@/components/attachments/pending";
@@ -44,6 +45,7 @@ export function PettyCashClient({ funds, vouchers, columns, lookups, can, filter
   const [form, setForm] = React.useState({ fundId: "", voucherDate: new Date().toISOString().slice(0, 10), type: "EXPENSE", description: "", amount: "" as string | number, taxCodeId: lookups.taxCodes.find((x) => x.meta?.isDefault)?.value ?? null, expenseAccountId: null as string | null, costCenterId: null as string | null, bankAccountId: (lookups.bankAccounts[0]?.value ?? null) as string | null, vendorName: "" });
   const [busy, setBusy] = React.useState(false);
   const fail = (e: string) => toast.error(te.has(e) ? te(e) : e);
+  const errorText = useActionError();
   const pending = usePendingAttachments();
   const ta = useTranslations("foundation.attachments");
   const attachEntity = "PettyCashVoucher";
@@ -73,7 +75,7 @@ export function PettyCashClient({ funds, vouchers, columns, lookups, can, filter
       toast.success(tc("saved"));
       setVOpen(false);
       router.refresh();
-    } else fail(res.fieldErrors ? Object.values(res.fieldErrors).flat()[0] : res.error);
+    } else toast.error(errorText(res));
   };
   const act = async (fn: () => Promise<{ ok: boolean; error?: string }>) => {
     setBusy(true);

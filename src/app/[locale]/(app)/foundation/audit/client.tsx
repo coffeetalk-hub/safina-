@@ -35,7 +35,7 @@ export function AuditClient({ data, columns, filters }: { data: PagedResult<Row>
           {entries.length === 0 ? (
             <p className="text-sm text-muted-foreground">{row?.action === "CREATE" || row?.action === "DELETE" ? JSON.stringify(row?.after ?? row?.before, null, 2).slice(0, 2000) : t("noDiff")}</p>
           ) : (
-            <Table>
+            <Table stack="flat">
               <TableHeader>
                 <TableRow>
                   <TableHead>{tf("field")}</TableHead>

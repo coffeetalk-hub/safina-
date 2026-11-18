@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { useActionError } from "@/lib/action-errors";
 import type { ActionResult } from "@/core/action";
 import { DialogAttachments } from "@/components/attachments/attachments-panel";
 import { usePendingAttachments } from "@/components/attachments/pending";
@@ -62,7 +63,7 @@ type Props<T extends FieldValues> = {
 
 export function EntityDialog<T extends FieldValues>({ open, onOpenChange, title, description, fields, defaultValues, action, onSuccess, size = "lg", columns = 2, attach, children }: Props<T>) {
   const t = useTranslations("common");
-  const te = useTranslations("errors");
+  const errorText = useActionError();
   const ta = useTranslations("foundation.attachments");
   const toast = useToast();
   const router = useRouter();
@@ -105,12 +106,9 @@ export function EntityDialog<T extends FieldValues>({ open, onOpenChange, title,
       onSuccess?.(res.data);
       router.refresh();
     } else {
-      if (res.fieldErrors) {
-        for (const [k, msgs] of Object.entries(res.fieldErrors)) {
-          form.setError(k as Path<T>, { message: msgs[0] });
-        }
-      }
-      toast.error(te.has(res.error) ? te(res.error) : res.error);
+      // Mark each field with its own message, and say the same thing in the toast.
+      for (const i of res.issues ?? []) form.setError(i.path as Path<T>, { message: errorText.issue(i) });
+      toast.error(errorText(res));
     }
   };
 

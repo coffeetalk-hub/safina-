@@ -47,7 +47,7 @@ export function VatClient({ from, to, report, returns, can }: { from: string; to
       <Card>
         <CardHeader><CardTitle className="text-base">{t("title")} · <span dir="ltr">{formatDate(from, locale)} → {formatDate(to, locale)}</span></CardTitle></CardHeader>
         <CardContent>
-          <Table>
+          <Table stack="flat">
             <TableHeader><TableRow><TableHead className="w-10">#</TableHead><TableHead>{t("box")}</TableHead><TableHead className="text-end">{t("amount")}</TableHead><TableHead className="text-end">{t("vatAmount")}</TableHead></TableRow></TableHeader>
             <TableBody>
               {boxes.map((b) => (
@@ -70,7 +70,7 @@ export function VatClient({ from, to, report, returns, can }: { from: string; to
       <Card>
         <CardHeader><CardTitle className="text-base">{t("history")}</CardTitle></CardHeader>
         <CardContent>
-          <Table>
+          <Table stack="flat">
             <TableHeader><TableRow><TableHead>{tf("number")}</TableHead><TableHead>{tf("period")}</TableHead><TableHead className="text-end">{t("outputVat")}</TableHead><TableHead className="text-end">{t("inputVat")}</TableHead><TableHead className="text-end">{t("net")}</TableHead><TableHead>{tc("status")}</TableHead><TableHead /></TableRow></TableHeader>
             <TableBody>
               {returns.length === 0 && <TableRow><TableCell colSpan={7} className="h-12 text-center text-muted-foreground">{tc("noData")}</TableCell></TableRow>}

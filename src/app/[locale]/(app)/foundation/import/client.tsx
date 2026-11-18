@@ -95,7 +95,7 @@ export function ImportClient({ entities, history }: { entities: string[]; histor
             <CardTitle>{t("history")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
+            <Table stack="flat">
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("entity")}</TableHead>

@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { useActionError } from "@/lib/action-errors";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { AttachmentsPanel, type AttachmentItem } from "@/components/attachments/attachments-panel";
 import { usePendingAttachments } from "@/components/attachments/pending";
@@ -59,6 +60,7 @@ export function RequestEditor({ doc, lookups, can, extra, attachments, canAttach
   };
   const total = lines.reduce((a, l) => a + Number(l.quantity || 0) * Number(l.estimatedPrice || 0), 0);
   const fail = (err: string) => toast.error(te.has(err) ? te(err) : err);
+  const errorText = useActionError();
   const pending = usePendingAttachments();
   const ta = useTranslations("foundation.attachments");
   const attachEntity = "PurchaseRequest";
@@ -69,11 +71,12 @@ export function RequestEditor({ doc, lookups, can, extra, attachments, canAttach
   };
 
   const save = async () => {
+    if (!lines.some((l) => l.descriptionAr.trim() || l.descriptionEn.trim())) return toast.error(t("requests.noItems"));
     setBusy("save");
     const res = await saveRequestAction({ id: doc?.id ?? null, ...head, neededBy: head.neededBy || null, requesterId: head.requesterId || null, costCenterId: head.costCenterId || null, branchId: head.branchId || null, purpose: head.purpose || null, notes: head.notes || null, lines: lines.filter((l) => l.descriptionAr || l.descriptionEn).map((l) => ({ ...l, descriptionAr: l.descriptionAr || l.descriptionEn, descriptionEn: l.descriptionEn || l.descriptionAr, quantity: Number(l.quantity || 0), estimatedPrice: Number(l.estimatedPrice || 0) })) });
     setBusy(null);
     if (res.ok) { toast.success(tc("saved")); const d = res.data as { id: string }; if (!doc) { await flushPending(d.id); router.replace(`/${locale}/purchasing/requests/${d.id}`); } else router.refresh(); }
-    else fail(res.fieldErrors ? Object.entries(res.fieldErrors).map(([k, v]) => `${k}: ${v[0]}`).join("; ") : res.error);
+    else toast.error(errorText(res));
   };
   const submit = async () => {
     if (!doc) return;
@@ -84,12 +87,23 @@ export function RequestEditor({ doc, lookups, can, extra, attachments, canAttach
   };
   const vendors = lookups.vendors.filter((v) => !vendorQ || v.label.toLowerCase().includes(vendorQ.toLowerCase()));
   const title = doc ? `${t("request")} ${doc.number}` : t("requests.new");
+  const showAttachments = doc ? attachments.length > 0 || canAttach.upload : canAttach.upload;
+  // Shown at the bottom of the attachments card, on the end side; the main action (Save) comes last.
+  const actionButtons = [
+    doc && doc.status === "DRAFT" && can.delete && <ConfirmButton key="delete" title={tc("deleteConfirmTitle")} action={() => deleteRequestAction(doc.id)} onSuccess={() => router.push(`/${locale}/purchasing/requests`)}><Trash2 /> {tc("delete")}</ConfirmButton>,
+    doc && ["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED"].includes(doc.status) && can.edit && <ConfirmButton key="cancel" title={tfin("cancelConfirm")} action={() => cancelRequestAction(doc.id)} variant="ghost"><Ban /> {tfin("cancelDoc")}</ConfirmButton>,
+    doc && doc.status === "APPROVED" && extra.order && <Button key="order" variant="outline" asChild><Link href={`/purchasing/orders/new?requestId=${doc.id}`}><PackageCheck /> {t("requests.toOrder")}</Link></Button>,
+    doc && doc.status === "APPROVED" && extra.rfq && <Button key="rfq" variant="default" onClick={() => setRfqOpen(true)}><Scale /> {t("requests.toRfq")}</Button>,
+    doc && editable && can.edit && <Button key="submit" variant="secondary" onClick={submit} disabled={busy !== null}>{busy === "submit" ? <Loader2 className="animate-spin" /> : <Send />} {tc("submit")}</Button>,
+    editable && (can.create || can.edit) && <Button key="save" onClick={save} disabled={busy !== null || total < 0}>{busy === "save" ? <Loader2 className="animate-spin" /> : <Save />} {tc("save")}</Button>,
+  ].filter(Boolean);
+  const actions = actionButtons.length > 0 ? actionButtons : null;
   return (
     <>
       <PageHeader title={title} actions={<><Button variant="ghost" size="sm" asChild><Link href="/purchasing/requests"><ArrowLeft className="rtl:rotate-180" /> {tc("back")}</Link></Button>{doc && <DocStatus status={doc.status} />}</>} />
       <div className="space-y-4">
         <Card>
-          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
             <div className="space-y-1"><Label>{tf("date")} *</Label><Input type="date" dir="ltr" value={head.requestDate} disabled={!editable} onChange={(e) => setHead({ ...head, requestDate: e.target.value })} /></div>
             <div className="space-y-1"><Label>{t("neededBy")}</Label><Input type="date" dir="ltr" value={head.neededBy} disabled={!editable} onChange={(e) => setHead({ ...head, neededBy: e.target.value })} /></div>
             <div className="space-y-1"><Label>{t("requester")}</Label><Combobox options={lookups.employees} value={head.requesterId} disabled={!editable} onChange={(v) => setHead({ ...head, requesterId: v ?? "" })} /></div>
@@ -107,7 +121,7 @@ export function RequestEditor({ doc, lookups, can, extra, attachments, canAttach
         </Card>
         <Card>
           <CardContent>
-            <Table>
+            <Table stack>
               <TableHeader><TableRow>
                 <TableHead className="w-8">#</TableHead><TableHead className="min-w-[180px]">{tfin("item")}</TableHead><TableHead className="min-w-[200px]">{tf("description")}</TableHead>
                 <TableHead className="w-20 text-end">{tfin("qty")}</TableHead><TableHead className="w-20">{tf("unit")}</TableHead><TableHead className="w-28 text-end">{t("estimatedPrice")}</TableHead>
@@ -116,27 +130,30 @@ export function RequestEditor({ doc, lookups, can, extra, attachments, canAttach
               <TableBody>
                 {lines.map((l, i) => (
                   <TableRow key={i}>
-                    <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                    <TableCell><Combobox size="sm" options={items} value={l.itemId} disabled={!editable} onChange={(v) => onItem(i, v)} /></TableCell>
-                    <TableCell className="space-y-1">
-                      <Input className="h-8" dir="rtl" placeholder={tf("descriptionAr")} value={l.descriptionAr} disabled={!editable} onChange={(e) => upd(i, { descriptionAr: e.target.value })} />
-                      <Input className="h-8" dir="ltr" placeholder={tf("descriptionEn")} value={l.descriptionEn} disabled={!editable} onChange={(e) => upd(i, { descriptionEn: e.target.value })} />
+                    {/* The max-md:order-* classes arrange the cells inside the phone card: heading and delete first, totals before accounts. */}
+                    <TableCell data-label="" className="text-muted-foreground max-md:order-1 max-md:self-center max-md:font-semibold max-md:text-foreground"><span className="md:hidden">{t("requests.itemN", { n: i + 1 })}</span><span className="max-md:hidden">{i + 1}</span></TableCell>
+                    <TableCell data-stack="full" className="max-md:order-3"><Combobox size="sm" className="max-md:h-9 max-md:text-sm" options={items} value={l.itemId} disabled={!editable} onChange={(v) => onItem(i, v)} /></TableCell>
+                    <TableCell data-stack="full" className="max-md:order-4">
+                      <div className="space-y-1">
+                        <Input className="h-8 max-md:h-9" dir="rtl" placeholder={tf("descriptionAr")} value={l.descriptionAr} disabled={!editable} onChange={(e) => upd(i, { descriptionAr: e.target.value })} />
+                        <Input className="h-8 max-md:h-9" dir="ltr" placeholder={tf("descriptionEn")} value={l.descriptionEn} disabled={!editable} onChange={(e) => upd(i, { descriptionEn: e.target.value })} />
+                      </div>
                     </TableCell>
-                    <TableCell><Input className="h-8 text-end" type="number" step="0.01" min="0" dir="ltr" value={l.quantity} disabled={!editable} onChange={(e) => upd(i, { quantity: e.target.value })} /></TableCell>
-                    <TableCell><Input className="h-8" dir="ltr" value={l.unit} disabled={!editable} onChange={(e) => upd(i, { unit: e.target.value })} /></TableCell>
-                    <TableCell><Input className="h-8 text-end" type="number" step="0.01" min="0" dir="ltr" value={l.estimatedPrice} disabled={!editable} onChange={(e) => upd(i, { estimatedPrice: e.target.value })} /></TableCell>
-                    {accounts.length > 0 && <TableCell><Combobox size="sm" options={accounts} value={l.expenseAccountId} disabled={!editable} onChange={(v) => upd(i, { expenseAccountId: v })} /></TableCell>}
-                    <TableCell><Combobox size="sm" options={lookups.costCenters} value={l.costCenterId} disabled={!editable} onChange={(v) => upd(i, { costCenterId: v })} /></TableCell>
-                    <TableCell className="text-end tabular-nums" dir="ltr">{formatMoney(Number(l.quantity || 0) * Number(l.estimatedPrice || 0), locale)}</TableCell>
-                    {editable && <TableCell><Button type="button" variant="ghost" size="icon-sm" onClick={() => setLines((p) => p.filter((_, j) => j !== i))} disabled={lines.length <= 1}><Trash2 className="size-3.5" /></Button></TableCell>}
+                    <TableCell className="max-md:order-5"><Input className="h-8 max-md:h-9 text-end" type="number" inputMode="decimal" step="0.01" min="0" dir="ltr" value={l.quantity} disabled={!editable} onChange={(e) => upd(i, { quantity: e.target.value })} /></TableCell>
+                    <TableCell className="max-md:order-6"><Input className="h-8 max-md:h-9" dir="ltr" value={l.unit} disabled={!editable} onChange={(e) => upd(i, { unit: e.target.value })} /></TableCell>
+                    <TableCell className="max-md:order-7"><Input className="h-8 max-md:h-9 text-end" type="number" inputMode="decimal" step="0.01" min="0" dir="ltr" value={l.estimatedPrice} disabled={!editable} onChange={(e) => upd(i, { estimatedPrice: e.target.value })} /></TableCell>
+                    {accounts.length > 0 && <TableCell data-stack="full" className="max-md:order-9"><Combobox size="sm" className="max-md:h-9 max-md:text-sm" options={accounts} value={l.expenseAccountId} disabled={!editable} onChange={(v) => upd(i, { expenseAccountId: v })} /></TableCell>}
+                    <TableCell data-stack="full" className="max-md:order-10"><Combobox size="sm" className="max-md:h-9 max-md:text-sm" options={lookups.costCenters} value={l.costCenterId} disabled={!editable} onChange={(v) => upd(i, { costCenterId: v })} /></TableCell>
+                    <TableCell className="text-end tabular-nums max-md:order-8 max-md:font-medium"><span dir="ltr">{formatMoney(Number(l.quantity || 0) * Number(l.estimatedPrice || 0), locale)}</span></TableCell>
+                    {editable && <TableCell data-label="" className="max-md:order-2 max-md:justify-self-end"><Button type="button" variant="ghost" size="icon-sm" aria-label={tc("delete")} onClick={() => setLines((p) => p.filter((_, j) => j !== i))} disabled={lines.length <= 1}><Trash2 className="size-3.5" /></Button></TableCell>}
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-            {editable && <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => setLines((p) => [...p, emptyLine()])}><Plus /> {tfin("addLine")}</Button>}
+            {editable && <Button type="button" variant="outline" size="sm" className="mt-3 max-md:h-9 max-md:w-full" onClick={() => setLines((p) => [...p, emptyLine()])}><Plus /> {t("requests.addItem")}</Button>}
           </CardContent>
         </Card>
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
           <Card className="lg:col-span-2"><CardContent className="space-y-3">
             <div className="space-y-1"><Label>{tc("notes")}</Label><Textarea value={head.notes} disabled={!editable} onChange={(e) => setHead({ ...head, notes: e.target.value })} /></div>
             {doc && (doc.rfqs.length > 0 || doc.purchaseOrders.length > 0) && (
@@ -149,17 +166,11 @@ export function RequestEditor({ doc, lookups, can, extra, attachments, canAttach
               </div>
             )}
           </CardContent></Card>
-          <Card><CardContent className="text-sm flex justify-between font-semibold text-base"><span>{t("estimated")}</span><span dir="ltr" className="tabular-nums">{formatMoney(total, locale)}</span></CardContent></Card>
+          <Card><CardContent className="flex flex-wrap justify-between gap-x-3 font-semibold text-base"><span>{t("estimated")}</span><span dir="ltr" className="tabular-nums">{formatMoney(total, locale)}</span></CardContent></Card>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {editable && (can.create || can.edit) && <Button onClick={save} disabled={busy !== null || total < 0}>{busy === "save" ? <Loader2 className="animate-spin" /> : <Save />} {tc("save")}</Button>}
-          {doc && editable && can.edit && <Button variant="secondary" onClick={submit} disabled={busy !== null}>{busy === "submit" ? <Loader2 className="animate-spin" /> : <Send />} {tc("submit")}</Button>}
-          {doc && doc.status === "APPROVED" && extra.rfq && <Button variant="default" onClick={() => setRfqOpen(true)}><Scale /> {t("requests.toRfq")}</Button>}
-          {doc && doc.status === "APPROVED" && extra.order && <Button variant="outline" asChild><Link href={`/purchasing/orders/new?requestId=${doc.id}`}><PackageCheck /> {t("requests.toOrder")}</Link></Button>}
-          {doc && ["DRAFT", "PENDING_APPROVAL", "APPROVED", "REJECTED"].includes(doc.status) && can.edit && <ConfirmButton title={tfin("cancelConfirm")} action={() => cancelRequestAction(doc.id)} variant="ghost"><Ban /> {tfin("cancelDoc")}</ConfirmButton>}
-          {doc && doc.status === "DRAFT" && can.delete && <ConfirmButton title={tc("deleteConfirmTitle")} action={() => deleteRequestAction(doc.id)} onSuccess={() => router.push(`/${locale}/purchasing/requests`)}><Trash2 /> {tc("delete")}</ConfirmButton>}
-        </div>
-        {(doc ? attachments.length > 0 || canAttach.upload : canAttach.upload) && <AttachmentsPanel entityType="PurchaseRequest" entityId={doc?.id ?? null} items={doc ? attachments : []} canUpload={canAttach.upload} canDelete={canAttach.delete} pending={pending} />}
+        {showAttachments
+          ? <AttachmentsPanel entityType="PurchaseRequest" entityId={doc?.id ?? null} items={doc ? attachments : []} canUpload={canAttach.upload} canDelete={canAttach.delete} pending={pending} footer={actions} />
+          : actions && <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>}
       </div>
       <Dialog open={rfqOpen} onOpenChange={setRfqOpen}>
         <DialogContent>

@@ -40,7 +40,7 @@ export function CurrenciesClient({ currencies, rates, can }: { currencies: Cur[]
           </CardAction>
         </CardHeader>
         <CardContent>
-          <Table>
+          <Table stack="flat">
             <TableHeader>
               <TableRow>
                 <TableHead>{tf("code")}</TableHead>
@@ -84,7 +84,7 @@ export function CurrenciesClient({ currencies, rates, can }: { currencies: Cur[]
         </CardHeader>
         <CardContent>
           <p className="mb-2 text-xs text-muted-foreground">{t("rateHint")}</p>
-          <Table>
+          <Table stack="flat">
             <TableHeader>
               <TableRow>
                 <TableHead>{tf("currency")}</TableHead>

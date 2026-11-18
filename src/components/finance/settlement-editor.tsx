@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Combobox } from "@/components/ui/combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { useActionError } from "@/lib/action-errors";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { AttachmentsPanel, type AttachmentItem } from "@/components/attachments/attachments-panel";
 import { usePendingAttachments } from "@/components/attachments/pending";
@@ -48,6 +49,7 @@ export function SettlementEditor({ mode, doc, lookups, can, actions, attachments
   const allocated = Object.values(alloc).reduce<number>((a, v) => a + Number(v || 0), 0);
   const amount = Number(head.amount || 0);
   const fail = (err: string) => toast.error(te.has(err) ? te(err) : err);
+  const errorText = useActionError();
   const pending = usePendingAttachments();
   const ta = useTranslations("foundation.attachments");
   const attachEntity = mode === "AR" ? "Receipt" : "Payment";
@@ -102,7 +104,7 @@ export function SettlementEditor({ mode, doc, lookups, can, actions, attachments
         await flushPending(d.id);
         router.replace(`/${locale}${listHref}/${d.id}`);
       } else router.refresh();
-    } else fail(res.fieldErrors ? Object.entries(res.fieldErrors).map(([k, v]) => `${k}: ${v[0]}`).join("; ") : res.error);
+    } else toast.error(errorText(res));
   };
   const post = async () => {
     if (!doc) return;

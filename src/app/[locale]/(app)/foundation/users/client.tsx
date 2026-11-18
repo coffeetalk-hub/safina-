@@ -15,18 +15,22 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { useActionError } from "@/lib/action-errors";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { removeUserAction, saveUserAction } from "@/modules/foundation/users/actions";
 
 type Opt = { value: string; label: string };
 type Row = Record<string, unknown>;
-type FormValues = { id?: string; email: string; nameAr: string; nameEn: string; phone: string; locale: "ar" | "en"; password: string; isActive: boolean; isSuperAdmin: boolean; roleIds: string[]; companyIds: string[] };
+type FormValues = { id?: string; email: string; nameAr: string; nameEn: string; phone: string; locale: "ar" | "en"; password: string; isActive: boolean; isSuperAdmin: boolean; roleIds: string[]; companyIds: string[]; employeeId: string };
+/** Select values that are not employee ids. NEW must match NEW_EMPLOYEE in modules/hr/employees. */
+const NONE = "__none";
+const NEW = "__new";
 
-export function UsersClient({ data, columns, roles, companies, isSuperAdmin, can }: { data: PagedResult<Row>; columns: ColumnDef[]; roles: Opt[]; companies: Opt[]; isSuperAdmin: boolean; can: { create: boolean; edit: boolean; delete: boolean } }) {
+export function UsersClient({ data, columns, roles, employees, companies, isSuperAdmin, can }: { data: PagedResult<Row>; columns: ColumnDef[]; roles: Opt[]; employees: (Opt & { userId: string | null })[]; companies: Opt[]; isSuperAdmin: boolean; can: { create: boolean; edit: boolean; delete: boolean } }) {
   const t = useTranslations("foundation.users");
   const tf = useTranslations("fields");
   const tc = useTranslations("common");
-  const te = useTranslations("errors");
+  const errorText = useActionError();
   const toast = useToast();
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
@@ -38,21 +42,21 @@ export function UsersClient({ data, columns, roles, companies, isSuperAdmin, can
     setEditing(row);
     form.reset(
       row
-        ? { id: String(row.id), email: String(row.email), nameAr: String(row.nameAr), nameEn: String(row.nameEn), phone: String(row.phone ?? ""), locale: row.locale as "ar" | "en", password: "", isActive: !!row.isActive, isSuperAdmin: !!row.isSuperAdmin, roleIds: (row.roleIds as string[]) ?? [], companyIds: (row.companyIds as string[]) ?? [] }
-        : { email: "", nameAr: "", nameEn: "", phone: "", locale: "ar", password: "", isActive: true, isSuperAdmin: false, roleIds: [], companyIds: [] },
+        ? { id: String(row.id), email: String(row.email), nameAr: String(row.nameAr), nameEn: String(row.nameEn), phone: String(row.phone ?? ""), locale: row.locale as "ar" | "en", password: "", isActive: !!row.isActive, isSuperAdmin: !!row.isSuperAdmin, roleIds: (row.roleIds as string[]) ?? [], companyIds: (row.companyIds as string[]) ?? [], employeeId: (row.employeeId as string | null) ?? NONE }
+        : { email: "", nameAr: "", nameEn: "", phone: "", locale: "ar", password: "", isActive: true, isSuperAdmin: false, roleIds: [], companyIds: [], employeeId: NEW },
     );
     setOpen(true);
   };
 
   const onSubmit = async (v: FormValues) => {
     setLoading(true);
-    const res = await saveUserAction({ ...v, phone: v.phone || null, password: v.password || null });
+    const res = await saveUserAction({ ...v, phone: v.phone || null, password: v.password || null, employeeId: v.employeeId === NONE ? null : v.employeeId });
     setLoading(false);
     if (res.ok) {
       toast.success(tc("saved"));
       setOpen(false);
       router.refresh();
-    } else toast.error(te.has(res.error) ? te(res.error) : res.error);
+    } else toast.error(errorText(res));
   };
 
   return (
@@ -92,6 +96,26 @@ export function UsersClient({ data, columns, roles, companies, isSuperAdmin, can
                 <FormField control={form.control} name="isActive" render={({ field }) => (<FormItem className="flex items-center gap-3 space-y-0 pt-2"><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>{tf("isActive")}</FormLabel></FormItem>)} />
                 {isSuperAdmin && <FormField control={form.control} name="isSuperAdmin" render={({ field }) => (<FormItem className="flex items-center gap-3 space-y-0 pt-2"><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl><FormLabel>{tf("isSuperAdmin")}</FormLabel></FormItem>)} />}
               </div>
+
+              <FormField
+                control={form.control}
+                name="employeeId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("employeeRecord")}</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value={NONE}>{t("employeeNone")}</SelectItem>
+                        <SelectItem value={NEW}>{t("employeeCreate")}</SelectItem>
+                        {/* Only records that are free, or already this person's. */}
+                        {employees.filter((e) => !e.userId || e.userId === editing?.id).map((e) => <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">{t("employeeHint")}</p>
+                  </FormItem>
+                )}
+              />
 
               <div className="space-y-2">
                 <div className="text-sm font-medium">{tf("roles")}</div>

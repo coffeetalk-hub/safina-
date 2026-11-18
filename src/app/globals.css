@@ -133,6 +133,92 @@
   .no-print { display: none !important; }
 }
 
+/* ─────────────── Phone layout ─────────────── */
+@layer base {
+  /* iOS Safari gives date and time inputs a fixed intrinsic width, so they spill out of narrow cards. */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="month"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    max-width: 100%;
+  }
+  input::-webkit-date-and-time-value { text-align: start; }
+}
+
+/*
+ * <Table stack>: below the md breakpoint every row becomes a card and every cell shows its
+ * column heading above the value, so nothing scrolls sideways. `stack="flat"` drops the card
+ * frame for tables that already sit inside a card. Cell headings come from `data-label`
+ * (filled in from the header row by the Table component when a cell does not set its own).
+ * Unlayered on purpose: these rules must win over the width and alignment utilities on cells.
+ */
+@media (width < 48rem) {
+  table.stack-mobile,
+  table.stack-mobile > tbody,
+  table.stack-mobile > tfoot { display: block; }
+  table.stack-mobile > thead { display: none; }
+  table.stack-mobile > tbody,
+  table.stack-mobile > tfoot { display: grid; gap: 0.5rem; }
+  table.stack-mobile > tfoot { margin-top: 0.5rem; background: transparent; border: 0; }
+  table.stack-mobile > tbody > tr,
+  table.stack-mobile > tfoot > tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem 0.75rem;
+    align-items: start;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+  }
+  table.stack-mobile > tbody > tr > td,
+  table.stack-mobile > tfoot > tr > td {
+    display: block;
+    width: auto;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+  html[dir="rtl"] table.stack-mobile > tbody > tr > td,
+  html[dir="rtl"] table.stack-mobile > tfoot > tr > td { text-align: right; }
+  table.stack-mobile td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 400;
+    color: var(--muted-foreground);
+  }
+  table.stack-mobile td[data-label=""]::before { display: none; }
+  table.stack-mobile td:empty { display: none; }
+  table.stack-mobile td[colspan],
+  table.stack-mobile td[data-stack~="full"],
+  table.stack-mobile td[data-stack~="title"] { grid-column: 1 / -1; }
+  table.stack-mobile > tbody > tr > td[colspan]:only-child { text-align: center; }
+  table.stack-mobile td[data-stack~="title"] { font-size: 0.9375rem; font-weight: 600; }
+  table.stack-mobile td[data-stack~="title"]::before { display: none; }
+
+  table.stack-flat > tbody,
+  table.stack-flat > tfoot { gap: 0; }
+  table.stack-flat > tbody > tr,
+  table.stack-flat > tfoot > tr {
+    padding: 0.75rem 0;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+  }
+  table.stack-flat > tbody > tr:first-child { padding-top: 0; }
+  table.stack-flat > tbody > tr:last-child { padding-bottom: 0; border-bottom: 0; }
+}
+
 /* ─────────────── Punch in / punch out ─────────────── */
 .punch-dial {
   --punch-color: var(--primary);

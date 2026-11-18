@@ -16,6 +16,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { useActionError } from "@/lib/action-errors";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { AttachmentsPanel, type AttachmentItem } from "@/components/attachments/attachments-panel";
 import { usePendingAttachments } from "@/components/attachments/pending";
@@ -60,6 +61,7 @@ export function RfqEditor({ doc, comparison, lookups, can, canAward, attachments
   const upd = (i: number, patch: Partial<Line>) => setLines((p) => p.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   const onItem = (i: number, id: string | null) => { const m = items.find((x) => x.value === id)?.meta ?? {}; upd(i, { itemId: id, descriptionAr: String(m.nameAr ?? lines[i].descriptionAr), descriptionEn: String(m.nameEn ?? lines[i].descriptionEn), unit: String(m.unit ?? lines[i].unit) }); };
   const fail = (err: string) => toast.error(te.has(err) ? te(err) : err);
+  const errorText = useActionError();
   const pending = usePendingAttachments();
   const ta = useTranslations("foundation.attachments");
   const attachEntity = "Rfq";
@@ -74,7 +76,7 @@ export function RfqEditor({ doc, comparison, lookups, can, canAward, attachments
     const res = await saveRfqAction({ id: doc?.id ?? null, ...head, requestId: doc?.requestId ?? null, branchId: head.branchId || null, notes: head.notes || null, vendorIds, lines: lines.filter((l) => l.descriptionAr || l.descriptionEn).map((l) => ({ ...l, descriptionAr: l.descriptionAr || l.descriptionEn, descriptionEn: l.descriptionEn || l.descriptionAr, quantity: Number(l.quantity || 0) })) });
     setBusy(null);
     if (res.ok) { toast.success(tc("saved")); const d = res.data as { id: string }; if (!doc) { await flushPending(d.id); router.replace(`/${locale}/purchasing/rfq/${d.id}`); } else router.refresh(); }
-    else fail(res.fieldErrors ? Object.entries(res.fieldErrors).map(([k, v]) => `${k}: ${v[0]}`).join("; ") : res.error);
+    else toast.error(errorText(res));
   };
   const openQuote = (q: Quote) => setQuote({ vendorId: q.vendorId, quoteRef: q.quoteRef ?? "", quoteDate: q.quoteDate?.slice(0, 10) ?? today, validUntil: q.validUntil?.slice(0, 10) ?? "", leadDays: q.leadDays?.toString() ?? "", paymentTerms: q.paymentTerms ?? "", currencyCode: q.currencyCode, notes: q.notes ?? "", prices: Object.fromEntries((doc?.lines ?? []).map((l) => [l.id, String(q.lines.find((x) => x.rfqLineId === l.id)?.unitPrice ?? "")])) });
   const saveQuote = async () => {
@@ -94,7 +96,7 @@ export function RfqEditor({ doc, comparison, lookups, can, canAward, attachments
       <PageHeader title={title} description={doc ? (ar ? doc.titleAr : doc.titleEn) : undefined} actions={<><Button variant="ghost" size="sm" asChild><Link href="/purchasing/rfq"><ArrowLeft className="rtl:rotate-180" /> {tc("back")}</Link></Button>{doc && <DocStatus status={doc.status} />}</>} />
       <div className="space-y-4">
         <Card>
-          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 [&>*]:min-w-0">
             <div className="space-y-1 lg:col-span-2"><Label>{tf("titleAr")} *</Label><Input dir="rtl" value={head.titleAr} disabled={!editable} onChange={(e) => setHead({ ...head, titleAr: e.target.value })} /></div>
             <div className="space-y-1 lg:col-span-2"><Label>{tf("titleEn")} *</Label><Input dir="ltr" value={head.titleEn} disabled={!editable} onChange={(e) => setHead({ ...head, titleEn: e.target.value })} /></div>
             <div className="space-y-1"><Label>{tf("date")} *</Label><Input type="date" dir="ltr" value={head.issueDate} disabled={!editable} onChange={(e) => setHead({ ...head, issueDate: e.target.value })} /></div>
@@ -105,7 +107,7 @@ export function RfqEditor({ doc, comparison, lookups, can, canAward, attachments
         </Card>
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2"><CardContent>
-            <Table>
+            <Table stack>
               <TableHeader><TableRow><TableHead className="w-8">#</TableHead><TableHead className="min-w-[180px]">{tfin("item")}</TableHead><TableHead className="min-w-[200px]">{tf("description")}</TableHead><TableHead className="w-24 text-end">{tfin("qty")}</TableHead><TableHead className="w-20">{tf("unit")}</TableHead>{editable && <TableHead className="w-10" />}</TableRow></TableHeader>
               <TableBody>
                 {lines.map((l, i) => (
@@ -215,7 +217,7 @@ export function RfqEditor({ doc, comparison, lookups, can, canAward, attachments
                 <div className="space-y-1"><Label>{t("paymentTerms")}</Label><Input value={quote.paymentTerms} onChange={(e) => setQuote({ ...quote, paymentTerms: e.target.value })} /></div>
                 <div className="space-y-1"><Label>{tf("currency")}</Label><Combobox options={lookups.currencies} value={quote.currencyCode} allowClear={false} onChange={(v) => setQuote({ ...quote, currencyCode: v ?? "SAR" })} /></div>
               </div>
-              <Table>
+              <Table stack="flat">
                 <TableHeader><TableRow><TableHead>{tf("description")}</TableHead><TableHead className="w-24 text-end">{tfin("qty")}</TableHead><TableHead className="w-32 text-end">{tfin("unitPrice")}</TableHead><TableHead className="w-32 text-end">{tfin("total")}</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {doc.lines.map((l) => (

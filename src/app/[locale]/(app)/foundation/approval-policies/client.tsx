@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { useActionError } from "@/lib/action-errors";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { removePolicyAction, savePolicyAction } from "@/modules/foundation/approval-policies/actions";
 import { formatMoney } from "@/lib/money";
@@ -27,9 +28,9 @@ export function PoliciesClient({ policies, docTypes, roles, users, can }: { poli
   const t = useTranslations("foundation.approvalPolicies");
   const tf = useTranslations("fields");
   const tc = useTranslations("common");
-  const te = useTranslations("errors");
   const locale = useLocale();
   const toast = useToast();
+  const errorText = useActionError();
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Policy | null>(null);
@@ -52,7 +53,7 @@ export function PoliciesClient({ policies, docTypes, roles, users, can }: { poli
       toast.success(tc("saved"));
       setOpen(false);
       router.refresh();
-    } else toast.error(te.has(res.error) ? te(res.error) : res.fieldErrors ? Object.values(res.fieldErrors).flat().join(", ") : res.error);
+    } else toast.error(errorText(res));
   };
 
   return (

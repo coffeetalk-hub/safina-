@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Clock, FileText, Image as ImageIcon, Loader2, Paperclip, Trash2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { listAttachmentsAction, removeAttachmentAction, uploadAttachmentAction } from "@/modules/foundation/attachments/actions";
@@ -31,10 +31,12 @@ type Props = {
   onChanged?: () => void;
   /** Borderless variant for dialogs. */
   compact?: boolean;
+  /** The page's action buttons (Save, Submit…), shown at the bottom of the card on the end side. */
+  footer?: React.ReactNode;
 };
 
 /** Drop-in panel for any document page or dialog: list + upload + delete, with a queue for unsaved records. */
-export function AttachmentsPanel({ entityType, entityId, items, canUpload, canDelete, pending, onChanged, compact }: Props) {
+export function AttachmentsPanel({ entityType, entityId, items, canUpload, canDelete, pending, onChanged, compact, footer }: Props) {
   const t = useTranslations("foundation.attachments");
   const tc = useTranslations("common");
   const te = useTranslations("errors");
@@ -91,7 +93,7 @@ export function AttachmentsPanel({ entityType, entityId, items, canUpload, canDe
             upload(e.dataTransfer.files);
           }}
         >
-          <Input placeholder={tc("notes")} value={desc} onChange={(e) => setDesc(e.target.value)} className="h-8 max-w-xs" />
+          <Input placeholder={tc("notes")} value={desc} onChange={(e) => setDesc(e.target.value)} className="h-8 max-md:h-9 sm:max-w-xs" />
           <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => upload(e.target.files)} accept={ATTACHMENT_ACCEPT} data-testid="attachment-input" />
           <Button type="button" size="sm" variant="outline" disabled={loading} onClick={() => fileRef.current?.click()}>
             {loading ? <Loader2 className="animate-spin" /> : <Upload />} {t("upload")}
@@ -105,9 +107,9 @@ export function AttachmentsPanel({ entityType, entityId, items, canUpload, canDe
         <ul className="divide-y">
           {queued.map((q) => (
             <li key={q.key} className="flex items-center gap-3 py-2 text-sm">
-              <Clock className="size-4 text-amber-600 dark:text-amber-400" />
-              <span className="truncate">{q.file.name}</span>
-              {q.description && <span className="text-muted-foreground truncate">— {q.description}</span>}
+              <Clock className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span className="min-w-0 truncate">{q.file.name}</span>
+              {q.description && <span className="min-w-0 text-muted-foreground truncate max-sm:hidden">— {q.description}</span>}
               <span className="ms-auto text-xs text-muted-foreground whitespace-nowrap">{t("pending")}</span>
               <Button type="button" variant="ghost" size="icon-sm" onClick={() => pending?.remove(q.key)} aria-label={tc("delete")}>
                 <X className="size-3.5" />
@@ -116,13 +118,13 @@ export function AttachmentsPanel({ entityType, entityId, items, canUpload, canDe
           ))}
           {items.map((a) => (
             <li key={a.id} className="flex items-center gap-3 py-2 text-sm">
-              {a.mimeType.startsWith("image/") ? <ImageIcon className="size-4 text-muted-foreground" /> : <FileText className="size-4 text-muted-foreground" />}
-              <a href={`/api/attachments/${a.id}`} target="_blank" rel="noreferrer" className="text-primary hover:underline truncate">
+              {a.mimeType.startsWith("image/") ? <ImageIcon className="size-4 shrink-0 text-muted-foreground" /> : <FileText className="size-4 shrink-0 text-muted-foreground" />}
+              <a href={`/api/attachments/${a.id}`} target="_blank" rel="noreferrer" className="min-w-0 text-primary hover:underline truncate">
                 {a.fileName}
               </a>
-              {a.description && <span className="text-muted-foreground truncate">— {a.description}</span>}
+              {a.description && <span className="min-w-0 text-muted-foreground truncate max-sm:hidden">— {a.description}</span>}
               <span className="ms-auto text-xs text-muted-foreground whitespace-nowrap" dir="ltr">
-                {Math.round(a.size / 1024)} KB · {formatDateTime(a.createdAt, locale)}
+                {Math.round(a.size / 1024)} KB<span className="max-sm:hidden"> · {formatDateTime(a.createdAt, locale)}</span>
               </span>
               {canDelete && (
                 <ConfirmButton title={tc("deleteConfirmTitle")} action={() => removeAttachmentAction(a.id)} variant="ghost" size="icon-sm" onSuccess={changed}>
@@ -154,6 +156,7 @@ export function AttachmentsPanel({ entityType, entityId, items, canUpload, canDe
         </CardTitle>
       </CardHeader>
       <CardContent className={cn("space-y-3")}>{body}</CardContent>
+      {footer && <CardFooter className="flex-wrap justify-end gap-2 border-t pt-4">{footer}</CardFooter>}
     </Card>
   );
 }

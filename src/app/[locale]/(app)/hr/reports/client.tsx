@@ -23,8 +23,8 @@ function Tbl({ rows, cols, resource, q, totalLabel, locale }: { rows: Row[]; col
   return (
     <div className="space-y-2">
       <div className="flex justify-end gap-2 no-print"><Button variant="outline" size="sm" asChild><a href={`/api/export/${resource}?${q}`}><Download /> Excel</a></Button><Button variant="outline" size="sm" asChild><a href={`/api/pdf/list/${resource}?${q}`} target="_blank" rel="noreferrer"><Printer /> PDF</a></Button></div>
-      <div className="rounded-md border bg-card overflow-x-auto">
-        <Table>
+      <div className="rounded-md border bg-card overflow-x-auto max-md:border-0 max-md:bg-transparent">
+        <Table stack>
           <TableHeader><TableRow>{cols.map((c) => <TableHead key={c.key} className={num(c) ? "text-end" : ""}>{c.label}</TableHead>)}</TableRow></TableHeader>
           <TableBody>
             {rows.length === 0 && <TableRow><TableCell colSpan={cols.length} className="h-16 text-center text-muted-foreground">—</TableCell></TableRow>}

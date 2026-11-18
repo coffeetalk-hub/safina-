@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
 import { useToast } from "@/components/ui/toast";
+import { useActionError } from "@/lib/action-errors";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { DocStatus } from "@/components/finance/doc-toolbar";
 import { PageHeader } from "@/components/shell/page-header";
@@ -28,7 +29,7 @@ type Bal = { leaveTypeId: string; remaining: number; entitled: number; taken: nu
 export type LeaveDoc = { id: string; number: string; status: string; employeeId: string; employeeAr: string; employeeEn: string; leaveTypeId: string; startDate: string; endDate: string; days: number; reason: string | null; approvals: { step: number; decision: string; comment: string | null; at: string; user: { nameAr: string; nameEn: string } }[] };
 
 export function LeaveEditor({ doc, employees, types, defaultEmployeeId, balances, perms, attachments, canAttach }: { doc: LeaveDoc | null; employees: Opt[]; types: TypeOpt[]; defaultEmployeeId: string; balances: Bal[]; perms: { create: boolean; edit: boolean; delete: boolean; approve: boolean; allEmployees: boolean }; attachments: AttachmentItem[]; canAttach: { upload: boolean; delete: boolean } }) {
-  const t = useTranslations("hr"); const tf = useTranslations("fields"); const tc = useTranslations("common"); const te = useTranslations("errors");
+  const t = useTranslations("hr"); const tf = useTranslations("fields"); const tc = useTranslations("common");
   const locale = useLocale(); const ar = locale === "ar"; const toast = useToast(); const router = useRouter();
   const editable = !doc || doc.status === "DRAFT" || doc.status === "REJECTED";
   const today = new Date().toISOString().slice(0, 10);
@@ -37,7 +38,7 @@ export function LeaveEditor({ doc, employees, types, defaultEmployeeId, balances
   const days = f.startDate && f.endDate && f.endDate >= f.startDate ? calendarDays(new Date(f.startDate), new Date(f.endDate)) : 0;
   const type = types.find((x) => x.value === f.leaveTypeId);
   const bal = balances.find((b) => b.leaveTypeId === f.leaveTypeId);
-  const fail = (err: string) => toast.error(te.has(err) ? te(err) : err);
+  const errorText = useActionError();
   const pending = usePendingAttachments();
   const ta = useTranslations("foundation.attachments");
   const attachEntity = "LeaveRequest";
@@ -50,7 +51,7 @@ export function LeaveEditor({ doc, employees, types, defaultEmployeeId, balances
     setBusy("save");
     const r = await saveLeaveAction({ id: doc?.id ?? null, ...f, reason: f.reason || null });
     setBusy(null);
-    if (r.ok) { toast.success(tc("saved")); if (!doc) { await flushPending((r.data as { id: string }).id); router.replace(`/${locale}/hr/leave/${(r.data as { id: string }).id}`); } else router.refresh(); } else fail(r.fieldErrors ? Object.values(r.fieldErrors).flat().join("; ") : r.error);
+    if (r.ok) { toast.success(tc("saved")); if (!doc) { await flushPending((r.data as { id: string }).id); router.replace(`/${locale}/hr/leave/${(r.data as { id: string }).id}`); } else router.refresh(); } else toast.error(errorText(r));
   };
   const onEmployee = (v: string | null) => { setF({ ...f, employeeId: v ?? "" }); if (!doc && v) router.replace(`/${locale}/hr/leave/new?employeeId=${v}`); };
   return (

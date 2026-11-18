@@ -22,6 +22,60 @@ export async function withEmployee<T extends { employeeId: string }>(companyId: 
 export async function myEmployee(session: AppSession) {
   return prisma.employee.findFirst({ where: { companyId: session.companyId, userId: session.userId }, select: empSelect });
 }
+/** `setUserEmployee` target: make a new employee record from the login's own name. */
+export const NEW_EMPLOYEE = "__new";
+
+function splitName(full: string): [string, string] {
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  return [parts[0] ?? "-", parts.slice(1).join(" ") || "-"];
+}
+
+/**
+ * Sets which employee record of the active company a login uses for My HR (punch, leave, payslips).
+ * `target`: an employee id, NEW_EMPLOYEE to create (or pick up by email) a record, or null to unlink.
+ * A login has one employee record in total, so one that belongs to another company is refused.
+ * Callers check permission; this only enforces company scope.
+ */
+export async function setUserEmployee(session: AppSession, userId: string, target: string | null): Promise<string | null> {
+  const companyId = session.companyId;
+  // A deleted record must not keep the login: `userId` is unique.
+  await prisma.employee.updateMany({ where: { userId, deletedAt: { not: null } }, data: { userId: null } });
+  const current = await prisma.employee.findFirst({ where: { userId }, select: { id: true, companyId: true } });
+  if (target === null) {
+    if (current?.companyId === companyId) await prisma.employee.update({ where: { id: current.id }, data: { userId: null } });
+    return null;
+  }
+  if (current && current.companyId !== companyId) throw new Error("EMPLOYEE_IN_OTHER_COMPANY");
+  if (current && (target === NEW_EMPLOYEE || target === current.id)) return current.id;
+
+  if (target === NEW_EMPLOYEE) {
+    const user = await prisma.user.findFirst({ where: { id: userId }, select: { email: true, nameAr: true, nameEn: true } });
+    if (!user) throw new Error("NOT_FOUND");
+    const sameEmail = await prisma.employee.findFirst({ where: { companyId, userId: null, email: { equals: user.email, mode: "insensitive" } }, select: { id: true } });
+    if (sameEmail) {
+      await prisma.employee.update({ where: { id: sameEmail.id }, data: { userId } });
+      return sameEmail.id;
+    }
+    const [firstNameEn, lastNameEn] = splitName(user.nameEn);
+    const [firstNameAr, lastNameAr] = splitName(user.nameAr);
+    const branch = await prisma.branch.findFirst({ where: { companyId, isMain: true }, select: { id: true } });
+    const created = await prisma.employee.create({
+      data: { companyId, code: await allocateNumber(companyId, "EMPLOYEE"), firstNameEn, lastNameEn, firstNameAr, lastNameAr, email: user.email, userId, branchId: branch?.id ?? null, status: "ACTIVE", createdById: session.userId },
+      select: { id: true },
+    });
+    return created.id;
+  }
+
+  const emp = await prisma.employee.findFirst({ where: { id: target, companyId }, select: { id: true, userId: true } });
+  if (!emp) throw new Error("NOT_FOUND");
+  if (emp.userId && emp.userId !== userId) throw new Error("EMPLOYEE_ALREADY_LINKED");
+  await prisma.$transaction(async (tx) => {
+    if (current) await tx.employee.update({ where: { id: current.id }, data: { userId: null } });
+    await tx.employee.update({ where: { id: emp.id }, data: { userId } });
+  });
+  return emp.id;
+}
+
 /** HR records that belong to one employee and can therefore be scoped to their owner. */
 export type HrOwnedResource = "attendance" | "leave" | "loan" | "payroll";
 

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/core/auth/config";
 import type { AppSession } from "@/core/auth/session";
 import { orderByFrom, skipTake, type ColumnDef, type ListParams, type PagedResult } from "@/components/data-table/types";
+import { setUserEmployee } from "@/modules/hr/employees";
 
 export const userSchema = z.object({
   id: z.string().nullable().optional(),
@@ -18,6 +19,8 @@ export const userSchema = z.object({
   roleIds: z.array(z.string()).default([]),
   /** additional company ids the user may access (super admin only manages this) */
   companyIds: z.array(z.string()).default([]),
+  /** Employee record used for My HR in the ACTIVE company: an id, NEW_EMPLOYEE, or null for none. Left out = unchanged. */
+  employeeId: z.string().nullable().optional(),
 });
 
 const userWhere = (session: AppSession, p: ListParams) => {
@@ -51,7 +54,9 @@ export async function listUsers(session: AppSession, p: ListParams, locale: stri
     prisma.user.findMany({ where, orderBy: orderByFrom(p.sort, ["email", "nameAr", "nameEn", "lastLoginAt", "createdAt"], { nameEn: "asc" }), ...skipTake(p), include: userInclude() }),
     prisma.user.count({ where }),
   ]);
-  return { rows: rows.map((u) => shape(u as unknown as Record<string, unknown>, session.companyId, locale)), total, page: p.page, pageSize: p.pageSize };
+  const linked = await prisma.employee.findMany({ where: { companyId: session.companyId, userId: { in: rows.map((u) => u.id) } }, select: { id: true, userId: true } });
+  const employeeOf = new Map(linked.map((e) => [e.userId, e.id]));
+  return { rows: rows.map((u) => ({ ...shape(u as unknown as Record<string, unknown>, session.companyId, locale), employeeId: employeeOf.get(u.id) ?? null })), total, page: p.page, pageSize: p.pageSize };
 }
 
 export async function allUsers(session: AppSession, p: ListParams, locale: string) {
@@ -60,16 +65,18 @@ export async function allUsers(session: AppSession, p: ListParams, locale: strin
 }
 
 export async function saveUser(session: AppSession, input: z.infer<typeof userSchema>) {
-  const { id, password, roleIds, companyIds, ...data } = input;
+  const { id, password, roleIds, companyIds, employeeId, ...data } = input;
   if (data.isSuperAdmin && !session.isSuperAdmin) throw new Error("FORBIDDEN");
   const validRoles = await prisma.role.findMany({ where: { id: { in: roleIds }, companyId: session.companyId }, select: { id: true } });
 
-  return prisma.$transaction(async (tx) => {
+  const saved = await prisma.$transaction(async (tx) => {
     let userId = id ?? null;
     if (userId) {
       const existing = await tx.user.findFirst({ where: { id: userId, companies: { some: { companyId: session.companyId } } } });
       if (!existing) throw new Error("NOT_FOUND");
-      await tx.user.update({ where: { id: userId }, data: { ...data, ...(password ? { passwordHash: await hashPassword(password) } : {}) } });
+      // Super admin rights travel in the sign-in token: when they change, end that person's sessions so the change applies now.
+      const adminChanged = existing.isSuperAdmin !== data.isSuperAdmin;
+      await tx.user.update({ where: { id: userId }, data: { ...data, ...(password ? { passwordHash: await hashPassword(password) } : {}), ...(adminChanged && userId !== session.userId ? { passwordChangedAt: new Date() } : {}) } });
     } else {
       if (!password) throw new Error("PASSWORD_REQUIRED");
       const u = await tx.user.create({ data: { ...data, passwordHash: await hashPassword(password), defaultCompanyId: session.companyId } });
@@ -94,6 +101,14 @@ export async function saveUser(session: AppSession, input: z.infer<typeof userSc
     if (validRoles.length) await tx.userCompanyRole.createMany({ data: validRoles.map((r) => ({ userCompanyId: uc.id, roleId: r.id })) });
     return { id: userId };
   });
+  if (employeeId !== undefined) await setUserEmployee(session, saved.id, employeeId);
+  return saved;
+}
+
+/** Employee records of the active company for the "Employee record" picker on the user form. */
+export async function employeeLinkOptions(session: AppSession, locale: string) {
+  const rows = await prisma.employee.findMany({ where: { companyId: session.companyId }, orderBy: { code: "asc" }, take: 5_000, select: { id: true, code: true, firstNameAr: true, lastNameAr: true, firstNameEn: true, lastNameEn: true, userId: true } });
+  return rows.map((e) => ({ value: e.id, label: `${e.code} · ${locale === "ar" ? `${e.firstNameAr} ${e.lastNameAr}` : `${e.firstNameEn} ${e.lastNameEn}`}`, userId: e.userId }));
 }
 
 export async function removeUser(session: AppSession, id: string) {

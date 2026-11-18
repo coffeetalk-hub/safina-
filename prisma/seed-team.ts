@@ -10,7 +10,8 @@
  *   self-service in the home company. Employees get self-service in the home company.
  * - Everyone gets an employee record in the home company (SAILORS, or TEAM_COMPANY_CODE)
  *   so they can punch in, request leave and see payslips. HR completes the details.
- *   Shared logins such as the placeholder admin are marked employeeRecord: false.
+ *   That includes every admin login, so My HR works for them too. A login that must not
+ *   have one can be marked employeeRecord: false.
  * - When someone's access changes, their sessions end and they sign in again with the same password.
  *
  * Passwords: each new account gets its own random password, written to
@@ -53,8 +54,8 @@ const TEAM: { email: string; en: [string, string]; ar: [string, string]; access:
   { email: "najd.althumairy@thesailors.ai", en: ["Najd", "Althumairy"], ar: ["نجد", "الثميري"], access: "purchasing" },
   { email: "almaha.almahasher@thesailors.ai", en: ["Almaha", "Almahasher"], ar: ["المها", "المحاشر"], access: "employee" },
   { email: "mohammed.alnemer@thesailors.ai", en: ["Mohammed", "Alnemer"], ar: ["محمد", "النمر"], access: "employee" },
-  // Shared admin login until a named administrator takes it over. Not a person, so no employee record.
-  { email: "placeholder.admin@thesailors.ai", en: ["Placeholder", "Admin"], ar: ["مدير", "مؤقت"], access: "admin", employeeRecord: false },
+  // Shared admin login until a named administrator takes it over.
+  { email: "placeholder.admin@thesailors.ai", en: ["Placeholder", "Admin"], ar: ["مدير", "مؤقت"], access: "admin" },
 ];
 
 /** Roles held in every company. Non-admins also get EMPLOYEE in the home company. */

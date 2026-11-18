@@ -145,6 +145,7 @@ export function DataTable({ tableKey, columns, data, filters = [], exportResourc
   const visibleCols = columns.filter((c) => visibility[c.key] !== false);
   const pageCount = Math.max(1, Math.ceil(data.total / data.pageSize));
   const activeFilters = filters.filter((f) => sp.get(`f.${f.key}`));
+  const sortableCols = columns.filter((c) => c.sortable);
 
   const [exportHref, printHref] = React.useMemo(() => {
     if (!exportResource) return [null, null];
@@ -172,6 +173,22 @@ export function DataTable({ tableKey, columns, data, filters = [], exportResourc
         {filters.map((f) => (
           <FilterControl key={f.key} def={f} value={sp.get(`f.${f.key}`) ?? ""} onChange={(v) => setParams({ [`f.${f.key}`]: v })} />
         ))}
+        {/* Phones show rows as cards with no header row, so sorting moves into a menu. */}
+        {sortableCols.length > 0 && (
+          <Select value={sort || "__default"} onValueChange={(v) => setParams({ sort: v === "__default" ? null : v })}>
+            <SelectTrigger size="sm" className="w-auto min-w-[140px] md:hidden" aria-label={t("sort")}>
+              <ArrowUpDown className="size-3.5 opacity-60" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__default">{t("sort")}</SelectItem>
+              {sortableCols.flatMap((c) => [
+                <SelectItem key={c.key} value={c.key}>{c.label} ↑</SelectItem>,
+                <SelectItem key={`-${c.key}`} value={`-${c.key}`}>{c.label} ↓</SelectItem>,
+              ])}
+            </SelectContent>
+          </Select>
+        )}
         {activeFilters.length > 0 && (
           <Button variant="ghost" size="sm" onClick={() => setParams(Object.fromEntries(filters.map((f) => [`f.${f.key}`, null])))}>
             <X /> {t("clearFilters")}
@@ -212,8 +229,8 @@ export function DataTable({ tableKey, columns, data, filters = [], exportResourc
         </div>
       </div>
 
-      <div className="rounded-md border bg-card">
-        <Table className={cn(compact && "text-xs")}>
+      <div className="rounded-md border bg-card max-md:border-0 max-md:bg-transparent">
+        <Table stack className={cn(compact && "text-xs")}>
           <TableHeader>
             <TableRow>
               {visibleCols.map((col) => {
@@ -250,8 +267,8 @@ export function DataTable({ tableKey, columns, data, filters = [], exportResourc
                     else onRowClick?.(row);
                   }}
                 >
-                  {visibleCols.map((col) => (
-                    <TableCell key={col.key} className={cn(col.align === "end" && "text-end", col.align === "center" && "text-center")}>
+                  {visibleCols.map((col, i) => (
+                    <TableCell key={col.key} data-label={col.label} data-stack={i === 0 ? "title" : undefined} className={cn(col.align === "end" && "text-end", col.align === "center" && "text-center")}>
                       {renderCell?.(col.key, row) ?? format(col, row)}
                     </TableCell>
                   ))}

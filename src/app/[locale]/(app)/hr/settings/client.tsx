@@ -13,18 +13,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CrudList } from "@/components/forms/crud-list";
 import type { ColumnDef, PagedResult } from "@/components/data-table/types";
 import { useToast } from "@/components/ui/toast";
+import { useActionError } from "@/lib/action-errors";
 import { saveHrSettingsAction, saveGosiRateAction, removeGosiRateAction, savePayComponentAction, removePayComponentAction, saveHolidayAction, removeHolidayAction } from "@/modules/hr/actions";
 
 type Row = Record<string, unknown>;
 type Opt = { value: string; label: string };
 
 export function HrSettingsClient({ tab, settings, rates, comps, hols, columns, accounts, can }: { tab: string; settings: Row; rates: PagedResult<Row>; comps: PagedResult<Row>; hols: PagedResult<Row>; columns: { rates: ColumnDef[]; comps: ColumnDef[]; hols: ColumnDef[] }; accounts: Opt[]; can: { create: boolean; edit: boolean; delete: boolean } }) {
-  const t = useTranslations("hr"); const tf = useTranslations("fields"); const tc = useTranslations("common"); const te = useTranslations("errors"); const tk = useTranslations("enums");
-  const toast = useToast(); const router = useRouter();
+  const t = useTranslations("hr"); const tf = useTranslations("fields"); const tc = useTranslations("common"); const tk = useTranslations("enums");
+  const toast = useToast(); const router = useRouter(); const errorText = useActionError();
   const [s, setS] = React.useState<Record<string, string>>(Object.fromEntries(Object.entries(settings).map(([k, v]) => [k, v == null ? "" : String(v)])));
   const [busy, setBusy] = React.useState(false);
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setS({ ...s, [k]: e.target.value });
-  const save = async () => { setBusy(true); const r = await saveHrSettingsAction(s); setBusy(false); if (r.ok) { toast.success(tc("saved")); router.refresh(); } else toast.error(r.fieldErrors ? Object.entries(r.fieldErrors).map(([k, v]) => `${k}: ${v[0]}`).join("; ") : te.has(r.error) ? te(r.error) : r.error); };
+  const save = async () => { setBusy(true); const r = await saveHrSettingsAction(s); setBusy(false); if (r.ok) { toast.success(tc("saved")); router.refresh(); } else toast.error(errorText(r)); };
   const num = (k: string, label: string, step = "1", hint?: string) => <div className="space-y-1"><Label>{label}</Label><Input type="number" step={step} dir="ltr" value={s[k] ?? ""} disabled={!can.edit} onChange={set(k)} />{hint && <p className="text-xs text-muted-foreground">{hint}</p>}</div>;
   const basisSel = (k: string, label: string) => <div className="space-y-1"><Label>{label}</Label><Select value={s[k]} disabled={!can.edit} onValueChange={(v) => setS({ ...s, [k]: v })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["BASIC", "BASIC_HOUSING", "FULL"].map((b) => <SelectItem key={b} value={b}>{t(`eos.basis.${b}`)}</SelectItem>)}</SelectContent></Select></div>;
   const pct = (name: string, label: string) => ({ name, label, type: "number" as const, step: "0.01" });

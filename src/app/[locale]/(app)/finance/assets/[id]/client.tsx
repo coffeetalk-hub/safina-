@@ -67,7 +67,7 @@ export function AssetDetail({ asset, schedule, lookups, can, attachments, canAtt
         <Card>
           <CardHeader><CardTitle className="text-base">{t("depreciationHistory")}</CardTitle></CardHeader>
           <CardContent>
-            <Table>
+            <Table stack="flat">
               <TableHeader><TableRow><TableHead>{tf("period")}</TableHead><TableHead className="text-end">{tf("amount")}</TableHead><TableHead className="text-end">{t("accumulated")}</TableHead><TableHead>{t("journalEntry")}</TableHead></TableRow></TableHeader>
               <TableBody>
                 {asset.depreciation.length === 0 && <TableRow><TableCell colSpan={4} className="h-12 text-center text-muted-foreground">—</TableCell></TableRow>}
@@ -82,7 +82,7 @@ export function AssetDetail({ asset, schedule, lookups, can, attachments, canAtt
       <Card>
         <CardHeader><CardTitle className="text-base">{t("depreciationSchedule")}</CardTitle></CardHeader>
         <CardContent className="max-h-80 overflow-auto">
-          <Table>
+          <Table stack="flat">
             <TableHeader><TableRow><TableHead>{tf("period")}</TableHead><TableHead className="text-end">{tf("amount")}</TableHead><TableHead className="text-end">{t("accumulated")}</TableHead><TableHead className="text-end">{t("netBook")}</TableHead></TableRow></TableHeader>
             <TableBody>{schedule.map((s) => <TableRow key={s.period}><TableCell dir="ltr">{s.period}</TableCell><TableCell className="text-end tabular-nums" dir="ltr">{formatMoney(s.amount, locale)}</TableCell><TableCell className="text-end tabular-nums" dir="ltr">{formatMoney(s.accumulated, locale)}</TableCell><TableCell className="text-end tabular-nums" dir="ltr">{formatMoney(s.netBook, locale)}</TableCell></TableRow>)}</TableBody>
           </Table>

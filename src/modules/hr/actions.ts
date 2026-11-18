@@ -6,7 +6,7 @@ import { can } from "@/core/auth/session";
 import { prisma } from "@/lib/prisma";
 import { plain } from "@/components/data-table/types";
 import { hrSettingsSchema, saveHrSettings, gosiRates, gosiRateSchema, holidays, holidaySchema, payComponents, payComponentSchema, leaveTypes, leaveTypeSchema } from "./settings";
-import { contracts, contractSchema, documents, documentSchema, salarySchema, saveSalaryStructure, myEmployee } from "./employees";
+import { contracts, contractSchema, documents, documentSchema, salarySchema, saveSalaryStructure, myEmployee, setUserEmployee, NEW_EMPLOYEE } from "./employees";
 import { attendanceSchema, saveAttendance, removeAttendance, generateMonth } from "./attendance";
 import { punch } from "./punch";
 import { leaveSchema, saveLeave, submitLeave, decideLeave, cancelLeave, adjustBalance } from "./leave";
@@ -14,11 +14,15 @@ import { loanSchema, saveLoan, submitLoan, disburseLoan, cancelLoan } from "./lo
 import { runSchema, createRun, calculateRun, submitRun, postRun, payRun, cancelRun, reopenRun, generateWps } from "./payroll";
 import { eosSchema, previewEosb, saveEosb, approveEosb, postEosb, payEosb, cancelEosb } from "./eosb";
 
+const MY_RECORD_SETUP = ["hr.employee:create", "foundation.user:edit"] as const;
 const idOf = (input: unknown) => (typeof input === "string" ? input : String((input as { id: string }).id));
 const crud = (permRes: string, c: { save: (s: never, d: never) => Promise<unknown>; remove: (s: never, id: string) => Promise<unknown> }, schema: z.ZodTypeAny) => ({
   save: async (input: unknown) => { const e = Boolean((input as { id?: string })?.id); return runAction({ permission: `hr.${permRes}:${e ? "edit" : "create"}`, schema }, input, (d, s) => c.save(s as never, d as never)); },
   remove: async (id: string) => runAction({ permission: `hr.${permRes}:delete` }, null, (_d, s) => c.remove(s as never, id)),
 });
+
+/** Administrators and HR without an employee record set one up for themselves, so My HR and punch-in work for them too. */
+export async function setupMyEmployeeAction() { return runAction({ permission: MY_RECORD_SETUP }, null, (_d, s) => setUserEmployee(s, s.userId, NEW_EMPLOYEE)); }
 
 // settings
 export async function saveHrSettingsAction(input: unknown) { return runAction({ permission: "hr.payroll:edit", schema: hrSettingsSchema }, input, (d, s) => saveHrSettings(s, d)); }

@@ -32,8 +32,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             {t.kind === "success" && <CheckCircle2 className="size-5 text-emerald-600 shrink-0" />}
             {t.kind === "error" && <XCircle className="size-5 text-destructive shrink-0" />}
             {t.kind === "info" && <Info className="size-5 text-sky-600 shrink-0" />}
-            <div className="grid gap-1">
-              <ToastPrimitive.Title className="text-sm font-semibold">{t.title}</ToastPrimitive.Title>
+            <div className="grid min-w-0 gap-1 [overflow-wrap:anywhere]">
+              <ToastPrimitive.Title className="text-sm font-semibold whitespace-pre-line">{t.title}</ToastPrimitive.Title>
               {t.description && <ToastPrimitive.Description className="text-sm text-muted-foreground">{t.description}</ToastPrimitive.Description>}
             </div>
             <ToastPrimitive.Close className="absolute top-2 end-2 rounded-md p-1 text-foreground/50 hover:text-foreground cursor-pointer">

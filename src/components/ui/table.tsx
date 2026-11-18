@@ -1,10 +1,50 @@
+"use client";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+/**
+ * Phone layout for a stacked table: gives each body cell its column heading as `data-label`
+ * (shown above the value by the `.stack-mobile` rules in globals.css). Cells that set their
+ * own `data-label`, and cells that span columns, are left alone.
+ */
+function useStackLabels(ref: React.RefObject<HTMLTableElement | null>, enabled: boolean) {
+  React.useEffect(() => {
+    const table = ref.current;
+    if (!enabled || !table) return;
+    const apply = () => {
+      const heads = Array.from(table.querySelectorAll<HTMLTableCellElement>(":scope > thead > tr:last-child > th")).map((th) => th.textContent?.trim() ?? "");
+      table.querySelectorAll<HTMLTableRowElement>(":scope > tbody > tr, :scope > tfoot > tr").forEach((tr) => {
+        let col = 0;
+        for (const td of Array.from(tr.cells)) {
+          const label = heads[col];
+          col += td.colSpan;
+          if (td.colSpan > 1 || !label) continue;
+          if (td.dataset.label === undefined || td.dataset.autoLabel !== undefined) {
+            if (td.dataset.label !== label) td.dataset.label = label;
+            td.dataset.autoLabel = "";
+          }
+        }
+      });
+    };
+    apply();
+    // Rows come and go in editors (add line, delete line): label the new ones too.
+    const observer = new MutationObserver(apply);
+    observer.observe(table, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [ref, enabled]);
+}
+
+/**
+ * `stack`: on phones, show each row as a card instead of scrolling sideways.
+ * Use `stack="flat"` when the table already sits inside a card.
+ */
+function Table({ className, stack, ...props }: React.ComponentProps<"table"> & { stack?: boolean | "flat" }) {
+  const ref = React.useRef<HTMLTableElement>(null);
+  useStackLabels(ref, Boolean(stack));
   return (
     <div data-slot="table-container" className="relative w-full overflow-x-auto">
-      <table className={cn("w-full caption-bottom text-sm", className)} {...props} />
+      <table ref={ref} className={cn("w-full caption-bottom text-sm", stack && "stack-mobile", stack === "flat" && "stack-flat", className)} {...props} />
     </div>
   );
 }

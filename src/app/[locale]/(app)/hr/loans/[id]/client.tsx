@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Combobox } from "@/components/ui/combobox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/components/ui/toast";
+import { useActionError } from "@/lib/action-errors";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { DocStatus, JournalLink } from "@/components/finance/doc-toolbar";
 import { PageHeader } from "@/components/shell/page-header";
@@ -27,14 +28,14 @@ type Opt = { value: string; label: string };
 export type LoanDoc = { id: string; number: string; status: string; employeeId: string; employeeAr: string; employeeEn: string; loanDate: string; amount: number; installments: number; installmentAmount: number; firstMonth: string; reason: string | null; paidAmount: number; schedule: { id: string; dueMonth: string; amount: number; paidAt: string | null }[] };
 
 export function LoanEditor({ doc, employees, defaultEmployeeId, perms, journal, attachments, canAttach }: { doc: LoanDoc | null; employees: Opt[]; defaultEmployeeId: string; perms: { create: boolean; edit: boolean; approve: boolean; allEmployees: boolean }; journal: { id: string; number: string } | null; attachments: AttachmentItem[]; canAttach: { upload: boolean; delete: boolean } }) {
-  const t = useTranslations("hr"); const tf = useTranslations("fields"); const tc = useTranslations("common"); const te = useTranslations("errors"); const tfin = useTranslations("finance");
+  const t = useTranslations("hr"); const tf = useTranslations("fields"); const tc = useTranslations("common"); const tfin = useTranslations("finance");
   const locale = useLocale(); const ar = locale === "ar"; const toast = useToast(); const router = useRouter();
   const editable = !doc || doc.status === "DRAFT";
   const nextMonth = React.useMemo(() => { const d = new Date(); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 7); }, []);
   const [f, setF] = React.useState({ employeeId: doc?.employeeId ?? defaultEmployeeId, loanDate: doc?.loanDate.slice(0, 10) ?? new Date().toISOString().slice(0, 10), amount: doc?.amount?.toString() ?? "", installments: doc?.installments?.toString() ?? "6", firstMonth: doc?.firstMonth.slice(0, 7) ?? nextMonth, reason: doc?.reason ?? "" });
   const [busy, setBusy] = React.useState(false);
   const inst = Number(f.amount || 0) / Math.max(1, Number(f.installments || 1));
-  const fail = (err: string) => toast.error(te.has(err) ? te(err) : err);
+  const errorText = useActionError();
   const pending = usePendingAttachments();
   const ta = useTranslations("foundation.attachments");
   const attachEntity = "EmployeeLoan";
@@ -47,7 +48,7 @@ export function LoanEditor({ doc, employees, defaultEmployeeId, perms, journal, 
     setBusy(true);
     const r = await saveLoanAction({ id: doc?.id ?? null, ...f, amount: Number(f.amount), installments: Number(f.installments), reason: f.reason || null });
     setBusy(false);
-    if (r.ok) { toast.success(tc("saved")); if (!doc) { await flushPending((r.data as { id: string }).id); router.replace(`/${locale}/hr/loans/${(r.data as { id: string }).id}`); } else router.refresh(); } else fail(r.fieldErrors ? Object.values(r.fieldErrors).flat().join("; ") : r.error);
+    if (r.ok) { toast.success(tc("saved")); if (!doc) { await flushPending((r.data as { id: string }).id); router.replace(`/${locale}/hr/loans/${(r.data as { id: string }).id}`); } else router.refresh(); } else toast.error(errorText(r));
   };
   return (
     <>
@@ -70,7 +71,7 @@ export function LoanEditor({ doc, employees, defaultEmployeeId, perms, journal, 
       </div>
       {doc && doc.schedule.length > 0 && (
         <Card className="mt-4"><CardHeader><CardTitle className="text-base">{t("loans.schedule")}</CardTitle></CardHeader><CardContent>
-          <Table><TableHeader><TableRow><TableHead>#</TableHead><TableHead>{t("dueMonth")}</TableHead><TableHead className="text-end">{tf("amount")}</TableHead><TableHead>{tf("status")}</TableHead></TableRow></TableHeader>
+          <Table stack="flat"><TableHeader><TableRow><TableHead>#</TableHead><TableHead>{t("dueMonth")}</TableHead><TableHead className="text-end">{tf("amount")}</TableHead><TableHead>{tf("status")}</TableHead></TableRow></TableHeader>
             <TableBody>{doc.schedule.map((s, i) => <TableRow key={s.id}><TableCell>{i + 1}</TableCell><TableCell dir="ltr">{s.dueMonth.slice(0, 7)}</TableCell><TableCell className="text-end" dir="ltr">{formatMoney(s.amount, locale)}</TableCell><TableCell>{s.paidAt ? <Badge variant="success">{tfin("paid")} · {formatDate(s.paidAt, locale)}</Badge> : <Badge variant="secondary">{t("loans.due")}</Badge>}</TableCell></TableRow>)}</TableBody></Table>
         </CardContent></Card>
       )}

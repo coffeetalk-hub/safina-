@@ -2,10 +2,11 @@ import { z } from "zod";
 import { requirePermission, requireSession, type AppSession, ForbiddenError } from "@/core/auth/session";
 import { runWithContext } from "@/core/context";
 import { Prisma } from "@prisma/client";
+import { describeIssue, type ActionIssue } from "@/core/validation-issues";
 
 export type ActionResult<T = unknown> =
   | { ok: true; data: T }
-  | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
+  | { ok: false; error: string; fieldErrors?: Record<string, string[]>; /** Validation problems in plain-language form: show these, not `fieldErrors`. */ issues?: ActionIssue[] };
 
 /**
  * Wraps a server action: authenticates, checks permission, validates input with Zod,
@@ -28,7 +29,7 @@ export async function runAction<S extends z.ZodTypeAny, T>(
           const k = issue.path.join(".") || "_";
           (fieldErrors[k] ??= []).push(issue.message);
         }
-        return { ok: false, error: "VALIDATION", fieldErrors };
+        return { ok: false, error: "VALIDATION", fieldErrors, issues: parsed.error.issues.map((i) => describeIssue(i, input)) };
       }
       data = parsed.data;
     }

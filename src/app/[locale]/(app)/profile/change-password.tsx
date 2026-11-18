@@ -7,12 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toast";
+import { useActionError } from "@/lib/action-errors";
 import { changePasswordAction } from "@/modules/foundation/users/actions";
 
 export function ChangePasswordForm() {
   const t = useTranslations("foundation.profile");
   const tc = useTranslations("common");
   const toast = useToast();
+  const errorText = useActionError();
   const [cur, setCur] = React.useState("");
   const [next, setNext] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -28,7 +30,7 @@ export function ChangePasswordForm() {
           toast.success(t("passwordChanged"));
           setCur("");
           setNext("");
-        } else toast.error(res.error);
+        } else toast.error(errorText(res));
       }}
     >
       <div className="space-y-1">

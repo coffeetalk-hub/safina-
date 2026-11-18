@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Combobox } from "@/components/ui/combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
+import { useActionError } from "@/lib/action-errors";
 import { ConfirmButton } from "@/components/forms/confirm-button";
 import { AttachmentsPanel, type AttachmentItem } from "@/components/attachments/attachments-panel";
 import { usePendingAttachments } from "@/components/attachments/pending";
@@ -154,6 +155,7 @@ export function DocEditor({ mode, doc, lookups, can, actions, attachments, canAt
   const taxTotal = calc.reduce((a, c) => a + c.tax, 0);
   const total = calc.reduce((a, c) => a + c.total, 0);
   const fail = (err: string) => toast.error(te.has(err) ? te(err) : err);
+  const errorText = useActionError();
 
   const payload = () => ({
     ...(extraPayload ?? {}),
@@ -187,7 +189,7 @@ export function DocEditor({ mode, doc, lookups, can, actions, attachments, canAt
         await flushPending(d.id);
         router.replace(`/${locale}${listHref}/${d.id}`);
       } else router.refresh();
-    } else fail(res.fieldErrors ? Object.entries(res.fieldErrors).map(([k, v]) => `${k}: ${v[0]}`).join("; ") : res.error);
+    } else toast.error(errorText(res));
   };
   const post = async (overrideCredit = false) => {
     if (!doc || !actions.post) return;
